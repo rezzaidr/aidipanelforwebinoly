@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/rezzaidr/aidipanelforwebinoly/main/docs/logo.png" alt="AIDI Panel" width="80">
-
 # AIDI Panel
 
 **Server Manager Panel — Built for Webinoly Stack**
