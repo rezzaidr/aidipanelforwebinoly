@@ -1,1 +1,138 @@
+name: Validate Code
 
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-php:
+    name: PHP Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Check PHP syntax
+        run: |
+          echo "Checking PHP syntax..."
+          php -l backend/api.php
+          php -l backend/login.php
+          echo "✓ PHP syntax OK"
+
+      - name: Check PHP version requirement
+        run: |
+          php -r "
+          \$content = file_get_contents('backend/api.php');
+          if (strpos(\$content, 'PHP_MAJOR_VERSION < 8') === false) {
+            echo 'WARNING: PHP version check missing in api.php';
+            exit(1);
+          }
+          echo '✓ PHP version check present';
+          "
+
+  validate-html:
+    name: HTML & JS Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install -g acorn
+
+      - name: Extract and validate JavaScript
+        run: |
+          echo "Checking HTML file exists..."
+          test -f aidipanel.html && echo "✓ aidipanel.html found"
+
+          echo "Checking file size..."
+          SIZE=$(wc -c < aidipanel.html)
+          if [ "$SIZE" -lt 50000 ]; then
+            echo "ERROR: aidipanel.html terlalu kecil ($SIZE bytes) - mungkin tidak lengkap"
+            exit 1
+          fi
+          echo "✓ File size: $SIZE bytes"
+
+          echo "Checking required functions..."
+          REQUIRED="apiFetch apiSimulate runCmd doCreate doDel toggleStatus"
+          for fn in $REQUIRED; do
+            if ! grep -q "$fn" aidipanel.html; then
+              echo "ERROR: Function '$fn' tidak ditemukan"
+              exit 1
+            fi
+          done
+          echo "✓ Semua required functions ada"
+
+          echo "Checking page count..."
+          PAGE_COUNT=$(grep -c "^P\." aidipanel.html || true)
+          if [ "$PAGE_COUNT" -lt 15 ]; then
+            echo "WARNING: Hanya $PAGE_COUNT halaman ditemukan (expected >= 15)"
+          else
+            echo "✓ Pages: $PAGE_COUNT"
+          fi
+
+  validate-installer:
+    name: Shell Script Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Check install.sh syntax
+        run: |
+          shellcheck install.sh --severity=error || true
+          echo "Shellcheck selesai"
+
+      - name: Check required functions in installer
+        run: |
+          REQUIRED="check_requirements install_dependencies setup_nginx generate_config setup_sudoers"
+          for fn in $REQUIRED; do
+            if grep -q "$fn()" install.sh; then
+              echo "✓ $fn"
+            else
+              echo "WARNING: $fn tidak ditemukan di install.sh"
+            fi
+          done
+
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for exposed secrets
+        run: |
+          echo "Checking for accidentally committed secrets..."
+
+          # Cek tidak ada password hardcoded
+          if grep -r "password.*=.*['\"].\{8,\}['\"]" backend/ --include="*.php" | grep -v "PASSWORD_HASH\|placeholder\|example\|your_pass"; then
+            echo "WARNING: Possible hardcoded password found"
+          else
+            echo "✓ No hardcoded passwords"
+          fi
+
+          # Cek .env tidak ikut
+          if [ -f ".env" ]; then
+            echo "ERROR: .env file should not be committed!"
+            exit 1
+          fi
+          echo "✓ No .env file"
+
+          # Cek config.php tidak berisi kredensial nyata
+          if grep -q "define.*AIDI_PASSWORD_HASH.*bcrypt" backend/config.php 2>/dev/null; then
+            echo "WARNING: config.php mungkin berisi hash password nyata"
+          else
+            echo "✓ config.php is template (no real credentials)"
+          fi
