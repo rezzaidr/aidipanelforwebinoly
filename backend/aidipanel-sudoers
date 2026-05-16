@@ -1,0 +1,22 @@
+# /etc/sudoers.d/aidipanel
+# AIDI Panel — izinkan www-data jalankan Webinoly commands tanpa password
+# Di-generate oleh installer.sh
+# JANGAN edit file ini secara manual — gunakan visudo
+
+# Format: www-data ALL=(ALL) NOPASSWD: <command>
+
+www-data ALL=(ALL) NOPASSWD: /usr/local/bin/site
+www-data ALL=(ALL) NOPASSWD: /usr/local/bin/stack
+www-data ALL=(ALL) NOPASSWD: /usr/local/bin/webinoly
+www-data ALL=(ALL) NOPASSWD: /usr/local/bin/httpauth
+www-data ALL=(ALL) NOPASSWD: /usr/local/bin/log
+www-data ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx
+www-data ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx
+www-data ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload php*-fpm
+www-data ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart php*-fpm
+www-data ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload mariadb
+www-data ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart mariadb
+www-data ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload redis
+www-data ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart redis
+www-data ALL=(ALL) NOPASSWD: /usr/sbin/nginx
+www-data ALL=(ALL) NOPASSWD: /usr/bin/redis-cli

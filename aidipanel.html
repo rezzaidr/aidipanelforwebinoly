@@ -1,0 +1,2366 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIDI Panel — Server Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Neutral palette — terinspirasi Claude UI */
+  --bg:        #f9f8f6;
+  --bg-panel:  #ffffff;
+  --bg-subtle: #f3f2ef;
+  --bg-hover:  #eeede9;
+  --bg-active: #e8e6e1;
+
+  --border:    #e2e0db;
+  --border-md: #d0cdc7;
+  --border-dk: #b8b4ac;
+
+  --text:      #1a1917;
+  --text-2:    #6b6860;
+  --text-3:    #a09d97;
+
+  /* Aksen tunggal — biru tenang */
+  --accent:    #2563eb;
+  --accent-lt: #eff4ff;
+  --accent-md: #dbeafe;
+
+  /* Status */
+  --ok:        #16a34a;
+  --ok-lt:     #f0fdf4;
+  --ok-bd:     #bbf7d0;
+  --warn:      #d97706;
+  --warn-lt:   #fffbeb;
+  --warn-bd:   #fde68a;
+  --err:       #dc2626;
+  --err-lt:    #fef2f2;
+  --err-bd:    #fecaca;
+  --info:      #0891b2;
+  --info-lt:   #ecfeff;
+  --info-bd:   #a5f3fc;
+
+  --font:      'Geist', system-ui, sans-serif;
+  --mono:      'Geist Mono', 'Courier New', monospace;
+  --r:         8px;
+  --r-sm:      5px;
+  --r-xs:      3px;
+}
+
+/* ── DARK MODE ───────────────────────────────────── */
+body.dark {
+  --bg:        #111110;
+  --bg-panel:  #1a1917;
+  --bg-subtle: #201f1e;
+  --bg-hover:  #282724;
+  --bg-active: #302f2d;
+
+  --border:    #282724;
+  --border-md: #363432;
+  --border-dk: #4a4846;
+
+  --text:      #e8e4df;
+  --text-2:    #a09d97;
+  --text-3:    #6b6860;
+
+  --accent-lt: #1a2744;
+  --accent-md: #1e3a6e;
+
+  --ok-lt:     #0d2118;
+  --ok-bd:     #166534;
+  --warn-lt:   #231a07;
+  --warn-bd:   #92400e;
+  --err-lt:    #200d0d;
+  --err-bd:    #991b1b;
+  --info-lt:   #0a1e25;
+  --info-bd:   #155e75;
+}
+
+/* smooth theme transition */
+body, .sidebar, .topbar, .card, .modal, .stat, .site-row, .btn, .finput, .fselect, .badge, .nav-item { transition: background-color .2s, border-color .2s, color .15s; }
+
+html, body { height: 100%; overflow: hidden; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+/* ── LAYOUT ─────────────────────────────────────── */
+.shell   { display: flex; height: 100vh; }
+.sidebar { width: 220px; min-width: 220px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+.main    { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--bg); }
+.topbar  { height: 50px; background: var(--bg-panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 10px; flex-shrink: 0; position: relative; }
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* ── SIDEBAR ─────────────────────────────────────── */
+.logo { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); }
+.logo-row { display: flex; align-items: center; gap: 9px; }
+.logo-mark { width: 26px; height: 26px; background: var(--text); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo-mark svg { width: 14px; height: 14px; fill: var(--bg); }
+.logo-name { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.logo-sub  { font-size: 10px; color: var(--text-3); margin-top: 1px; font-family: var(--mono); }
+
+.server-chip { margin: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 10px; cursor: default; }
+.sc-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; font-weight: 500; }
+.sc-name  { font-size: 12px; font-weight: 500; margin-top: 3px; display: flex; align-items: center; gap: 6px; font-family: var(--mono); }
+.sc-dot   { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex-shrink: 0; animation: pulse 2.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 60%{opacity:.3} }
+
+.nav-section { padding: 8px 0 2px; }
+.nav-label   { font-size: 10px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .1em; padding: 0 16px 3px; }
+.nav-item    { display: flex; align-items: center; gap: 8px; padding: 7px 16px; cursor: pointer; border-radius: 0; font-size: 13px; color: var(--text-2); transition: background .1s, color .1s; border-left: 2px solid transparent; }
+.nav-item:hover  { background: var(--bg-subtle); color: var(--text); }
+.nav-item.active { background: var(--bg-subtle); color: var(--text); border-left-color: var(--accent); font-weight: 500; }
+.nav-item i { font-size: 15px; width: 16px; text-align: center; flex-shrink: 0; opacity: .7; }
+.nav-item.active i { opacity: 1; color: var(--accent); }
+.nav-badge { margin-left: auto; font-size: 10px; font-weight: 600; font-family: var(--mono); background: var(--bg-active); color: var(--text-2); padding: 1px 6px; border-radius: 10px; }
+.nav-badge.accent { background: var(--accent-md); color: var(--accent); }
+
+.nav-scroll { flex: 1; overflow-y: auto; }
+.nav-scroll::-webkit-scrollbar { width: 0; }
+
+.sidebar-foot { padding: 10px 16px; border-top: 1px solid var(--border); }
+.sidebar-foot p { font-size: 10px; color: var(--text-3); font-family: var(--mono); line-height: 1.6; }
+
+/* ── TOPBAR ──────────────────────────────────────── */
+.page-title { font-size: 14px; font-weight: 600; flex: 1; }
+.tb-right   { display: flex; align-items: center; gap: 8px; }
+
+.search { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 10px; background: var(--bg-subtle); transition: border-color .15s; }
+.search:focus-within { border-color: var(--accent); background: var(--bg-panel); }
+.search i { font-size: 13px; color: var(--text-3); }
+.search input { background: none; border: none; outline: none; font-family: var(--font); font-size: 12px; color: var(--text); width: 160px; }
+.search input::placeholder { color: var(--text-3); }
+
+/* ── BUTTONS ─────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--r-sm); border: 1px solid var(--border-md); background: var(--bg-panel); color: var(--text); font-size: 12px; font-weight: 500; font-family: var(--font); cursor: pointer; transition: all .12s; white-space: nowrap; line-height: 1.4; }
+.btn:hover  { background: var(--bg-subtle); border-color: var(--border-dk); }
+.btn:active { transform: scale(.98); }
+.btn i { font-size: 13px; }
+.btn-primary { background: var(--text); color: var(--bg-panel); border-color: var(--text); }
+.btn-primary:hover { background: #2d2c2a; border-color: #2d2c2a; color: #fff; }
+.btn-danger  { background: var(--err-lt); color: var(--err); border-color: var(--err-bd); }
+.btn-danger:hover  { background: #fee2e2; }
+.btn-success { background: var(--ok-lt); color: var(--ok); border-color: var(--ok-bd); }
+.btn-success:hover { background: #dcfce7; }
+.btn-sm { padding: 3px 9px; font-size: 11px; }
+.btn-sm i { font-size: 12px; }
+.btn-icon { width: 28px; height: 28px; padding: 0; justify-content: center; }
+.btn-icon i { font-size: 14px; }
+.btn-icon:hover.del { color: var(--err); border-color: var(--err-bd); background: var(--err-lt); }
+.w100 { width: 100%; justify-content: center; }
+
+/* ── BADGE ───────────────────────────────────────── */
+.badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; font-family: var(--mono); padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+.badge i { font-size: 11px; }
+.b-ok   { background: var(--ok-lt); color: var(--ok); border: 1px solid var(--ok-bd); }
+.b-warn { background: var(--warn-lt); color: var(--warn); border: 1px solid var(--warn-bd); }
+.b-err  { background: var(--err-lt); color: var(--err); border: 1px solid var(--err-bd); }
+.b-info { background: var(--info-lt); color: var(--info); border: 1px solid var(--info-bd); }
+.b-acc  { background: var(--accent-lt); color: var(--accent); border: 1px solid var(--accent-md); }
+.b-neu  { background: var(--bg-subtle); color: var(--text-2); border: 1px solid var(--border); }
+
+/* ── CARDS ───────────────────────────────────────── */
+.card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; }
+.card-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 8px; }
+.card-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.card-title i { font-size: 15px; color: var(--text-3); }
+
+/* ── GRID ────────────────────────────────────────── */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.g3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+.g4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+
+/* ── STAT CARDS ──────────────────────────────────── */
+.stat { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px; }
+.stat-label { font-size: 11px; color: var(--text-3); font-weight: 500; text-transform: uppercase; letter-spacing: .07em; }
+.stat-val   { font-size: 24px; font-weight: 700; font-family: var(--mono); margin: 6px 0 4px; letter-spacing: -.03em; color: var(--text); }
+.stat-sub   { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 4px; }
+
+/* ── FORM ────────────────────────────────────────── */
+.fg      { margin-bottom: 14px; }
+.fg:last-child { margin-bottom: 0; }
+.flabel  { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; }
+.finput  { width: 100%; background: var(--bg-subtle); border: 1px solid var(--border-md); border-radius: var(--r-sm); padding: 7px 11px; font-family: var(--mono); font-size: 12px; color: var(--text); outline: none; transition: border-color .12s, background .12s; }
+.finput:focus { border-color: var(--accent); background: var(--bg-panel); }
+.finput::placeholder { color: var(--text-3); }
+.fselect { width: 100%; background: var(--bg-subtle); border: 1px solid var(--border-md); border-radius: var(--r-sm); padding: 7px 11px; font-family: var(--font); font-size: 13px; color: var(--text); outline: none; cursor: pointer; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a09d97' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; transition: border-color .12s; }
+.fselect:focus { border-color: var(--accent); outline: none; }
+
+/* Toggle */
+.ftoggle { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 3px 0; user-select: none; }
+.ftoggle .track { width: 34px; height: 19px; border-radius: 10px; background: var(--bg-active); border: 1px solid var(--border-md); position: relative; transition: all .18s; flex-shrink: 0; margin-top: 1px; }
+.ftoggle .track.on { background: var(--text); border-color: var(--text); }
+.ftoggle .track::after { content:''; position: absolute; width: 13px; height: 13px; border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: transform .18s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.ftoggle .track.on::after { transform: translateX(15px); }
+.ftoggle-txt { font-size: 13px; }
+.ftoggle-txt strong { display: block; font-weight: 500; color: var(--text); }
+.ftoggle-txt span   { display: block; font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+/* ── SITE ROWS ───────────────────────────────────── */
+.site-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--bg-panel); margin-bottom: 6px; cursor: pointer; transition: border-color .12s, background .12s; }
+.site-row:hover { border-color: var(--border-md); background: var(--bg-subtle); }
+.site-row:last-child { margin-bottom: 0; }
+.site-ic { width: 32px; height: 32px; border-radius: var(--r-sm); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-2); }
+.site-info { flex: 1; min-width: 0; }
+.site-domain { font-size: 13px; font-weight: 500; font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.site-meta   { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; margin-top: 3px; }
+.site-acts   { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+
+/* ── TABLE ───────────────────────────────────────── */
+.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tbl td { padding: 7px 0; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl td:first-child { color: var(--text-3); width: 150px; font-family: var(--mono); font-size: 11px; }
+.tbl td:last-child  { color: var(--text); font-weight: 500; text-align: right; }
+
+/* ── TERMINAL ────────────────────────────────────── */
+.terminal { background: #16181c; border: 1px solid #2a2d35; border-radius: var(--r); overflow: hidden; font-family: var(--mono); font-size: 12px; }
+.term-hd   { display: flex; align-items: center; gap: 5px; padding: 9px 14px; border-bottom: 1px solid #2a2d35; background: #0f1114; }
+.term-dot  { width: 10px; height: 10px; border-radius: 50%; }
+.term-lbl  { font-size: 11px; color: #4a5568; margin-left: 6px; flex: 1; }
+.term-body { padding: 12px 16px; max-height: 210px; overflow-y: auto; line-height: 1.7; }
+.term-body::-webkit-scrollbar { width: 3px; }
+.term-body::-webkit-scrollbar-thumb { background: #2a2d35; }
+.tl-cmd  { color: #74c99b; }
+.tl-ok   { color: #5eead4; }
+.tl-err  { color: #f87171; }
+.tl-warn { color: #fbbf24; }
+.tl-out  { color: #6b7280; }
+.tl-prompt { color: #374151; }
+.tl-cursor { display: inline-block; width: 7px; height: 13px; background: #74c99b; opacity: .8; animation: blink .9s step-end infinite; vertical-align: middle; }
+@keyframes blink { 0%,100%{opacity:.8} 50%{opacity:0} }
+
+/* ── PROGRESS ────────────────────────────────────── */
+.prog { height: 4px; background: var(--bg-active); border-radius: 2px; overflow: hidden; margin-top: 5px; }
+.prog-fill { height: 100%; border-radius: 2px; transition: width .4s ease; }
+
+/* ── TABS ────────────────────────────────────────── */
+.tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 18px; gap: 0; }
+.tab  { padding: 8px 16px; font-size: 12px; font-weight: 500; color: var(--text-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .12s; }
+.tab:hover  { color: var(--text-2); }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* ── MODAL ───────────────────────────────────────── */
+.modal-bg { position: fixed; inset: 0; background: rgba(26,25,23,.45); display: flex; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px); }
+.modal     { background: var(--bg-panel); border: 1px solid var(--border-md); border-radius: var(--r); width: 480px; max-width: 94vw; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,.15); }
+.modal-hd  { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-ttl { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.modal-body{ padding: 20px; overflow-y: auto; flex: 1; }
+.modal-ft  { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ── TOAST ───────────────────────────────────────── */
+.toast-wrap { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 300; pointer-events: none; }
+.toast { background: var(--bg-panel); border: 1px solid var(--border-md); border-radius: var(--r-sm); padding: 10px 14px; font-size: 12px; display: flex; align-items: center; gap: 8px; animation: toastIn .2s ease; box-shadow: 0 4px 20px rgba(0,0,0,.1); pointer-events: auto; max-width: 300px; }
+.toast.ok   { border-left: 3px solid var(--ok); }
+.toast.err  { border-left: 3px solid var(--err); }
+.toast.info { border-left: 3px solid var(--accent); }
+.toast.warn { border-left: 3px solid var(--warn); }
+.toast i { font-size: 14px; flex-shrink: 0; }
+.toast span { flex: 1; line-height: 1.4; }
+.toast-close { cursor: pointer; color: var(--text-3); padding: 2px; }
+@keyframes toastIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+/* ── NOTICE ──────────────────────────────────────── */
+.notice { border-radius: var(--r-sm); padding: 10px 13px; font-size: 12px; line-height: 1.55; display: flex; gap: 8px; align-items: flex-start; }
+.notice i { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.n-info    { background: var(--info-lt); border: 1px solid var(--info-bd); color: var(--info); }
+.n-warn    { background: var(--warn-lt); border: 1px solid var(--warn-bd); color: var(--warn); }
+.n-err     { background: var(--err-lt); border: 1px solid var(--err-bd); color: var(--err); }
+.n-ok      { background: var(--ok-lt); border: 1px solid var(--ok-bd); color: var(--ok); }
+
+/* ── CMD PREVIEW ─────────────────────────────────── */
+.cmd-box { background: #16181c; border: 1px solid #2a2d35; border-radius: var(--r-sm); padding: 12px 14px; font-family: var(--mono); font-size: 11.5px; }
+.cmd-label { font-size: 10px; color: #4a5568; text-transform: uppercase; letter-spacing: .09em; margin-bottom: 8px; }
+.cmd-line  { color: #74c99b; line-height: 1.7; }
+.cmd-line::before { content: '$ '; color: #374151; }
+
+/* ── UTILS ───────────────────────────────────────── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.fx  { display: flex; }
+.fxc { align-items: center; }
+.fxb { justify-content: space-between; }
+.fxe { justify-content: flex-end; }
+.flex1 { flex: 1; min-width: 0; }
+.gap4  { gap: 4px; }
+.gap6  { gap: 6px; }
+.gap8  { gap: 8px; }
+.gap10 { gap: 10px; }
+.gap12 { gap: 12px; }
+.gap14 { gap: 14px; }
+.mb6   { margin-bottom: 6px; }
+.mb10  { margin-bottom: 10px; }
+.mb12  { margin-bottom: 12px; }
+.mb14  { margin-bottom: 14px; }
+.mb16  { margin-bottom: 16px; }
+.mb20  { margin-bottom: 20px; }
+.mt8   { margin-top: 8px; }
+.mt12  { margin-top: 12px; }
+.mt14  { margin-top: 14px; }
+.mt16  { margin-top: 16px; }
+.mono  { font-family: var(--mono); }
+.t2    { color: var(--text-2); }
+.t3    { color: var(--text-3); }
+.f11   { font-size: 11px; }
+.f12   { font-size: 12px; }
+.f13   { font-size: 13px; }
+.f500  { font-weight: 500; }
+.f600  { font-weight: 600; }
+
+/* ── SCROLL ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-row">
+        <div class="logo-mark">
+          <svg viewBox="0 0 16 16"><path d="M2 8C2 4.69 4.69 2 8 2s6 2.69 6 6-2.69 6-6 6-6-2.69-6-6zm6-4C5.79 4 4 5.79 4 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 1.5c1.38 0 2.5 1.12 2.5 2.5S9.38 10.5 8 10.5 5.5 9.38 5.5 8 6.62 5.5 8 5.5z"/></svg>
+        </div>
+        <div>
+          <div class="logo-name">AIDI Panel</div>
+          <div class="logo-sub">Server Manager v1.0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="server-chip">
+      <div class="sc-label">Server</div>
+      <div class="sc-name"><span class="sc-dot"></span>vps-production-01</div>
+    </div>
+
+    <div class="nav-scroll">
+      <div class="nav-section">
+        <div class="nav-label">Utama</div>
+        <div class="nav-item active" data-p="dashboard"><i class="ti ti-home"></i>Dashboard</div>
+        <div class="nav-item" data-p="sites"><i class="ti ti-world"></i>Sites<span class="nav-badge accent" id="nb-sites">6</span></div>
+        <div class="nav-item" data-p="create"><i class="ti ti-plus"></i>Buat Site Baru</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Server</div>
+        <div class="nav-item" data-p="stack"><i class="ti ti-layers-subtract"></i>Stack & PHP</div>
+        <div class="nav-item" data-p="cache"><i class="ti ti-bolt"></i>FastCGI Cache<span class="nav-badge" id="nb-cache">2</span></div>
+        <div class="nav-item" data-p="ssl"><i class="ti ti-lock"></i>SSL Manager</div>
+        <div class="nav-item" data-p="database"><i class="ti ti-database"></i>Database</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Keamanan</div>
+        <div class="nav-item" data-p="httpauth"><i class="ti ti-shield"></i>HTTP Auth</div>
+        <div class="nav-item" data-p="blockip"><i class="ti ti-ban"></i>Block IP</div>
+        <div class="nav-item" data-p="sftp"><i class="ti ti-folder"></i>SFTP</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Monitoring</div>
+        <div class="nav-item" data-p="logs"><i class="ti ti-terminal"></i>Log Viewer</div>
+        <div class="nav-item" data-p="backup"><i class="ti ti-cloud-upload"></i>Backup</div>
+        <div class="nav-item" data-p="smtp"><i class="ti ti-mail"></i>SMTP Email</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Advanced</div>
+        <div class="nav-item" data-p="redirect"><i class="ti ti-arrow-right"></i>Redirect Manager</div>
+        <div class="nav-item" data-p="multisite"><i class="ti ti-layout-grid"></i>WP Multisite</div>
+        <div class="nav-item" data-p="cron"><i class="ti ti-clock"></i>Cron Jobs</div>
+        <div class="nav-item" data-p="phpinfo"><i class="ti ti-file-info"></i>PHP Info</div>
+        <div class="nav-item" data-p="firewall"><i class="ti ti-shield-lock"></i>Firewall</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" data-p="tools"><i class="ti ti-tool"></i>Admin Tools</div>
+        <div class="nav-item" data-p="settings"><i class="ti ti-settings"></i>Pengaturan</div>
+      </div>
+    </div>
+
+    <div class="sidebar-foot">
+      <p>AIDI Panel v1.0</p>
+      <p>Built for Webinoly Stack</p>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="page-title">Dashboard</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="mode-badge"
+          onclick="toggleDemoMode()"
+          title="Klik untuk connect ke server nyata"
+          style="font-size:10px;font-weight:700;font-family:var(--mono);padding:3px 9px;border-radius:20px;cursor:pointer;letter-spacing:.06em;background:var(--warn-lt);color:var(--warn);border:1px solid var(--warn-bd);user-select:none">DEMO</span>
+      </div>
+      <div class="tb-right">
+        <div class="search">
+          <i class="ti ti-search"></i>
+          <input placeholder="Cari domain, perintah..." id="gsearch" oninput="globalSearch(this.value)">
+        </div>
+        <button class="btn btn-sm" onclick="runCmd('sudo webinoly -verify','Semua konfigurasi valid ✓')"><i class="ti ti-check"></i>Verify</button>
+        <button class="btn btn-sm" onclick="runCmd('sudo webinoly -update','Webinoly berhasil di-update ✓')"><i class="ti ti-refresh"></i>Update</button>
+        <!-- Notif bell -->
+        <div style="position:relative">
+          <button class="btn btn-icon btn-sm" id="bell-btn" onclick="toggleNotif()" title="Notifikasi"><i class="ti ti-bell"></i></button>
+          <span id="bell-dot" style="position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--err);border:1.5px solid var(--bg-panel);display:block"></span>
+        </div>
+        <!-- Dark mode -->
+        <button class="btn btn-icon btn-sm" id="theme-btn" onclick="toggleTheme()" title="Ganti Tema"><i class="ti ti-moon" id="theme-icon"></i></button>
+        <button class="btn btn-primary btn-sm" onclick="go('create')"><i class="ti ti-plus"></i>Site Baru</button>
+      </div>
+
+      <!-- Notif dropdown -->
+      <div id="notif-panel" style="display:none;position:absolute;top:54px;right:16px;width:300px;background:var(--bg-panel);border:1px solid var(--border-md);border-radius:var(--r);box-shadow:0 8px 30px rgba(0,0,0,.12);z-index:150">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;font-weight:600">Notifikasi</span>
+          <button class="btn btn-sm" style="font-size:11px" onclick="clearNotif()">Tandai semua dibaca</button>
+        </div>
+        <div id="notif-list" style="max-height:280px;overflow-y:auto"></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border);text-align:center">
+          <button class="btn btn-sm w100" onclick="go('logs');closeNotif()" style="justify-content:center"><i class="ti ti-external-link"></i>Buka Log Viewer</button>
+        </div>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal-bg" style="display:none" onclick="if(event.target===this)closeModal()"></div>
+<!-- Toasts -->
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+'use strict';
+
+/* ═══ DATA ═══════════════════════════════════════ */
+const DB = {
+  sites: [
+    { domain:'example.com',      type:'wp',    status:'on',  ssl:true,  cache:true,  redis:true,  php:'8.3', db:'wp_example',  size:'2.1 GB' },
+    { domain:'shop.example.com', type:'wp',    status:'on',  ssl:true,  cache:true,  redis:false, php:'8.3', db:'wp_shop',     size:'4.8 GB' },
+    { domain:'api.example.com',  type:'php',   status:'on',  ssl:true,  cache:false, redis:false, php:'8.2', db:'db_api',      size:'380 MB' },
+    { domain:'static.io',        type:'html',  status:'on',  ssl:true,  cache:false, redis:false, php:null,  db:null,          size:'120 MB' },
+    { domain:'node.internal.id', type:'proxy', status:'on',  ssl:true,  cache:false, redis:false, php:null,  db:null,          size:'—' },
+    { domain:'staging.dev',      type:'wp',    status:'off', ssl:false, cache:false, redis:false, php:'8.3', db:'wp_staging',  size:'1.2 GB' },
+  ],
+  httpUsers: [
+    { user:'webadmin', scope:'Semua Site',      created:'2026-01-10' },
+    { user:'deployer', scope:'staging.dev',      created:'2026-03-22' },
+  ],
+  blockedIPs: [
+    { ip:'185.191.171.0', reason:'Bot scan',    added:'2026-05-01' },
+    { ip:'45.148.10.245', reason:'Brute force', added:'2026-05-03' },
+    { ip:'103.77.16.182', reason:'Spam',        added:'2026-05-10' },
+  ],
+  cacheState: {},
+};
+DB.sites.forEach(s => DB.cacheState[s.domain] = s.cache);
+
+/* ═══ HELPERS ════════════════════════════════════ */
+const typeLabel = t => ({wp:'WordPress',php:'PHP',html:'HTML',proxy:'Proxy'})[t]||t;
+const typeBadge = t => ({wp:'b-acc',php:'b-info',html:'b-warn',proxy:'b-neu'})[t]||'b-neu';
+const typeIcon  = t => ({wp:'ti-brand-wordpress',php:'ti-file-code-2',html:'ti-code',proxy:'ti-switch-horizontal'})[t]||'ti-world';
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+const statusBadge = s => s==='on'
+  ? `<span class="badge b-ok"><i class="ti ti-circle-check"></i>Online</span>`
+  : `<span class="badge b-neu">Offline</span>`;
+const sslBadge = v => v
+  ? `<span class="badge b-ok"><i class="ti ti-lock"></i>SSL</span>`
+  : `<span class="badge b-err">No SSL</span>`;
+
+/* ═══ TOAST ══════════════════════════════════════ */
+function toast(msg, type='info', dur=3000){
+  const w = document.getElementById('toasts');
+  const id = 't'+Date.now();
+  const icons = {ok:'ti-circle-check',err:'ti-circle-x',info:'ti-info-circle',warn:'ti-alert-triangle'};
+  const cols  = {ok:'var(--ok)',err:'var(--err)',info:'var(--accent)',warn:'var(--warn)'};
+  const el = document.createElement('div');
+  el.className=`toast ${type}`; el.id=id;
+  el.innerHTML=`<i class="ti ${icons[type]||icons.info}" style="color:${cols[type]||cols.info}"></i><span>${esc(msg)}</span><i class="ti ti-x toast-close" onclick="rmToast('${id}')"></i>`;
+  w.appendChild(el);
+  setTimeout(()=>rmToast(id),dur);
+}
+function rmToast(id){
+  const el=document.getElementById(id);
+  if(el){el.style.opacity='0';el.style.transform='translateY(4px)';el.style.transition='all .18s';setTimeout(()=>el.remove(),200);}
+}
+
+/* ═══ MODAL ══════════════════════════════════════ */
+function openModal(html){
+  const bg=document.getElementById('modal-bg');
+  bg.innerHTML=`<div class="modal" onclick="event.stopPropagation()">${html}</div>`;
+  bg.style.display='flex';
+}
+function closeModal(){ document.getElementById('modal-bg').style.display='none'; }
+
+/* ═══════════════════════════════════════════════
+   API LAYER — Fetch ke backend api.php
+   Semua komunikasi ke server lewat sini
+═══════════════════════════════════════════════ */
+
+// State global: CSRF token & mode
+const API = {
+  url:        '/api/api.php',
+  csrfToken:  null,
+  demoMode:   true,   // true = simulasi, false = live ke server
+  loading:    false,
+};
+
+/**
+ * Fungsi utama fetch ke API backend.
+ * Return: { success, output, error, ...data }
+ */
+async function apiFetch(action, params = {}) {
+  if (API.demoMode) {
+    // Demo mode: simulasi response realistis
+    return apiSimulate(action, params);
+  }
+
+  if (!API.csrfToken && action !== 'login' && action !== 'status') {
+    toast('Sesi belum aktif — silakan login', 'err');
+    showLoginModal();
+    return { success: false, error: 'Not authenticated' };
+  }
+
+  const body = new URLSearchParams({
+    action,
+    _csrf: API.csrfToken || '',
+    ...params
+  });
+
+  try {
+    const res = await fetch(API.url, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-Token':  API.csrfToken || '',
+      },
+      body: body.toString(),
+      credentials: 'same-origin',
+    });
+
+    if (res.status === 401) {
+      API.csrfToken = null;
+      toast('Sesi habis — silakan login kembali', 'warn');
+      showLoginModal();
+      return { success: false, error: 'Session expired' };
+    }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 100)}`);
+    }
+
+    const data = await res.json();
+    return data;
+
+  } catch (err) {
+    console.error('API Error:', err);
+    toast('Error: ' + err.message, 'err', 4000);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Simulasi response API untuk demo mode.
+ * Ketika panel dibuka tanpa server, tetap bisa preview semua fitur.
+ */
+function apiSimulate(action, params) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const domain = params.domain || 'example.com';
+      const responses = {
+        site_list:      { success:true, sites: DB.sites },
+        site_create:    { success:true, output:`WordPress site ${domain} created successfully.\nDatabase: wp_${domain.replace(/\./g,'_')}\nSSL: Let's Encrypt certificate installed.` },
+        site_delete:    { success:true, output:`Site ${domain} and database deleted.` },
+        site_toggle:    { success:true, output:`Site ${domain} ${params.state || 'on'}.` },
+        site_info:      { success:true, output:`Domain: ${domain}\nType: WordPress\nPHP: 8.3\nNginx config: /etc/nginx/sites-available/${domain}\nRoot: /var/www/${domain}/htdocs` },
+        ssl_toggle:     { success:true, output:`SSL ${params.state || 'on'} for ${domain}.\nLet's Encrypt certificate ${params.state==='renew'?'renewed':'installed'}.` },
+        cache_toggle:   { success:true, output:`FastCGI cache ${params.state || 'on'} for ${domain}.` },
+        cache_clear:    { success:true, output:`FastCGI cache cleared: ${domain || 'all sites'}.` },
+        stack_info:     { success:true, nginx:'nginx/1.25.3', php:'PHP 8.3.4', mysql:'mysql  Ver 15.1 Distrib 10.11.6-MariaDB', redis:'Redis server v=7.2.4' },
+        php_install:    { success:true, output:`PHP ${params.version} installed successfully.` },
+        db_password:    { success:true, output:`[DEMO] root password: *** (tersembunyi di demo mode)` },
+        httpauth_add:   { success:true, output:`User ${params.username} added to HTTP auth.` },
+        httpauth_delete:{ success:true, output:`User ${params.username} removed.` },
+        httpauth_list:  { success:true, output:DB.httpUsers.map(u=>u.user).join('\n') },
+        blockip_add:    { success:true, output:`IP ${params.ip} blocked in Nginx.` },
+        blockip_remove: { success:true, output:`IP ${params.ip} unblocked.` },
+        blockip_list:   { success:true, ips: DB.blockedIPs.map(b=>b.ip) },
+        sftp_toggle:    { success:true, output:`SFTP ${params.state} for www-data.` },
+        run_command:    { success:true, output:`[DEMO] Command: ${params.command}\nOutput: OK` },
+        logs_get:       { success:true, lines:['10:47:33 200 GET / - HIT [FastCGI]','10:47:31 200 POST /wp-admin/admin-ajax.php','10:47:28 404 GET /wp-content/plugins/xyz','10:47:22 403 GET /wp-config.php [BLOCKED]'], count:4 },
+        server_info:    { success:true, hostname:'vps-production-01', uptime:'up 12 days', load:[0.18,0.22,0.19], disk_total:85899345920, disk_free:63350194176, mem:{total:4294967296, used:1503238553, free:2791728743} },
+        webinoly_update:{ success:true, output:`Webinoly updated to latest version.` },
+        webinoly_verify:{ success:true, output:`✓ Nginx running\n✓ PHP-FPM 8.3 running\n✓ MariaDB running\n✓ Redis running\n✓ 5 sites active` },
+        login:          { success:true, csrf_token:'demo-csrf-token-'+Date.now() },
+        logout:         { success:true },
+        status:         { authenticated:true, version:'1.0.1' },
+      };
+      resolve(responses[action] || { success:true, output:'[DEMO] OK' });
+    }, 400 + Math.random() * 300); // Delay realistis 400-700ms
+  });
+}
+
+/**
+ * runCmd — digunakan oleh semua tombol di panel.
+ * Menjalankan arbitrary Webinoly command via action=run_command.
+ */
+async function runCmd(cmd, okMsg) {
+  showCmdProgress(cmd);
+  const result = await apiFetch('run_command', { command: cmd });
+  hideCmdProgress();
+
+  if (result.success) {
+    toast(okMsg || 'Selesai ✓', 'ok');
+    if (result.output) showOutputModal(cmd, result.output, 'ok');
+  } else {
+    toast(result.error || 'Command gagal', 'err', 5000);
+    if (result.output) showOutputModal(cmd, result.output, 'err');
+  }
+  return result;
+}
+
+/**
+ * apiAction — untuk action spesifik dengan parameter (bukan raw command).
+ * Lebih aman dari runCmd karena menggunakan action yang sudah di-whitelist.
+ */
+async function apiAction(action, params = {}, onSuccess) {
+  showCmdProgress(action);
+  const result = await apiFetch(action, params);
+  hideCmdProgress();
+
+  if (result.success !== false) {
+    if (onSuccess) onSuccess(result);
+  } else {
+    toast(result.error || 'Gagal', 'err', 4000);
+  }
+  return result;
+}
+
+/* ── Progress indicator ─────────────────────────── */
+let _progressEl = null;
+function showCmdProgress(label) {
+  if (_progressEl) return;
+  _progressEl = document.createElement('div');
+  _progressEl.id = 'cmd-progress';
+  _progressEl.innerHTML = `
+    <div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+      background:var(--bg-panel);border:1px solid var(--border-md);border-radius:8px;
+      padding:10px 18px;display:flex;align-items:center;gap:10px;z-index:400;
+      box-shadow:0 4px 20px rgba(0,0,0,.12);font-size:12px;max-width:380px">
+      <div style="width:14px;height:14px;border:2px solid var(--border-md);
+        border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0"></div>
+      <span style="color:var(--text-2);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</span>
+    </div>`;
+  document.body.appendChild(_progressEl);
+}
+function hideCmdProgress() {
+  if (_progressEl) { _progressEl.remove(); _progressEl = null; }
+}
+
+/* ── Output Modal (tampilkan hasil command) ─────── */
+function showOutputModal(cmd, output, type = 'ok') {
+  const icon = type === 'ok' ? 'ti-circle-check' : 'ti-circle-x';
+  const color = type === 'ok' ? 'var(--ok)' : 'var(--err)';
+  openModal(`
+  <div class="modal-hd">
+    <div class="modal-ttl"><i class="ti ${icon}" style="color:${color}"></i>Output Command</div>
+    <button class="btn btn-icon btn-sm" onclick="closeModal()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body">
+    <div class="cmd-box mb12" style="font-size:11px;color:var(--text-3)">${esc(cmd)}</div>
+    <div class="terminal" style="max-height:300px">
+      <div class="term-body" style="max-height:280px;overflow-y:auto">
+        ${esc(output).split('\n').map(l =>
+          `<div class="${l.startsWith('✓')||l.includes('success')||l.includes('OK')?'tl-ok':l.startsWith('✗')||l.includes('error')||l.includes('Error')?'tl-err':'tl-out'}">${l||'&nbsp;'}</div>`
+        ).join('')}
+      </div>
+    </div>
+  </div>
+  <div class="modal-ft"><button class="btn btn-primary" onclick="closeModal()">Tutup</button></div>`);
+}
+
+/* ── Login Modal ──────────────────────────────── */
+function showLoginModal() {
+  openModal(`
+  <div class="modal-hd"><div class="modal-ttl"><i class="ti ti-lock"></i>Login ke Panel</div></div>
+  <div class="modal-body">
+    <div class="fg"><label class="flabel">Username</label><input class="finput" id="lm-user" placeholder="admin" autofocus></div>
+    <div class="fg"><label class="flabel">Password</label><input class="finput" type="password" id="lm-pass" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div id="lm-err" style="display:none" class="notice n-err mt8"><i class="ti ti-alert-triangle"></i><span id="lm-err-msg"></span></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-primary w100" style="justify-content:center" onclick="doLogin()"><i class="ti ti-login"></i>Masuk</button>
+  </div>`);
+}
+
+async function doLogin() {
+  const user = (document.getElementById('lm-user')||{}).value?.trim();
+  const pass = (document.getElementById('lm-pass')||{}).value;
+  if (!user || !pass) { showLoginError('Isi username dan password'); return; }
+
+  const btn = document.querySelector('.modal-ft .btn-primary');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader" style="animation:spin .7s linear infinite"></i>Masuk...'; }
+
+  const result = await apiFetch('login', { username: user, password: pass });
+
+  if (result.success) {
+    API.csrfToken = result.csrf_token;
+    API.demoMode = false;
+    closeModal();
+    toast(`Selamat datang, ${user}!`, 'ok');
+    // Refresh data dari server
+    await syncServerData();
+    go(curPage);
+  } else {
+    showLoginError(result.error || 'Login gagal');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i>Masuk'; }
+  }
+}
+
+function showLoginError(msg) {
+  const errEl = document.getElementById('lm-err');
+  const msgEl = document.getElementById('lm-err-msg');
+  if (errEl && msgEl) { errEl.style.display='flex'; msgEl.textContent = msg; }
+  else toast(msg, 'err');
+}
+
+/* ── Mode Toggle (Demo ↔ Live) ────────────────── */
+function toggleDemoMode() {
+  if (API.demoMode) {
+    // Switch ke live mode — perlu login
+    showLoginModal();
+  } else {
+    // Kembali ke demo mode
+    API.demoMode = true;
+    API.csrfToken = null;
+    toast('Kembali ke Demo Mode', 'info');
+    updateDemoModeBadge();
+  }
+}
+function updateDemoModeBadge() {
+  const badge = document.getElementById('mode-badge');
+  if (!badge) return;
+  if (API.demoMode) {
+    badge.textContent = 'DEMO';
+    badge.style.background = 'var(--warn-lt)';
+    badge.style.color = 'var(--warn)';
+    badge.title = 'Klik untuk connect ke server nyata';
+  } else {
+    badge.textContent = 'LIVE';
+    badge.style.background = 'var(--ok-lt)';
+    badge.style.color = 'var(--ok)';
+    badge.title = 'Terhubung ke server nyata';
+  }
+}
+
+/* ── Sync data dari server nyata ──────────────── */
+async function syncServerData() {
+  if (API.demoMode) return;
+
+  try {
+    // Ambil list sites dari server
+    const sitesRes = await apiFetch('site_list');
+    if (sitesRes.success && sitesRes.sites?.length) {
+      DB.sites = sitesRes.sites;
+      DB.sites.forEach(s => DB.cacheState[s.domain] = s.cache);
+      document.getElementById('nb-sites').textContent = DB.sites.length;
+    }
+
+    // Ambil info server
+    const infoRes = await apiFetch('server_info');
+    if (infoRes.success) {
+      DB.serverInfo = infoRes;
+    }
+  } catch (e) {
+    console.warn('Sync failed:', e);
+  }
+}
+
+/* ── CSS untuk spinner ──────────────────────────── */
+const _spinStyle = document.createElement('style');
+_spinStyle.textContent = '@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';
+document.head.appendChild(_spinStyle);
+
+/* ═══ NAVIGATION ════════════════════════════════ */
+let curPage = 'dashboard';
+const pageTitles = {
+  dashboard:'Dashboard', sites:'Sites Manager', create:'Buat Site Baru',
+  stack:'Stack & PHP', cache:'FastCGI Cache', ssl:'SSL Manager', database:'Database',
+  httpauth:'HTTP Auth', blockip:'Block IP', sftp:'SFTP Access',
+  logs:'Log Viewer', backup:'Backup', smtp:'SMTP Email',
+  redirect:'Redirect Manager', multisite:'WP Multisite', cron:'Cron Jobs',
+  phpinfo:'PHP Info', firewall:'Firewall Rules',
+  tools:'Admin Tools', settings:'Pengaturan'
+};
+
+function go(p){
+  curPage=p;
+  document.querySelectorAll('.nav-item[data-p]').forEach(n=>n.classList.toggle('active',n.dataset.p===p));
+  document.getElementById('page-title').textContent=pageTitles[p]||p;
+  document.getElementById('content').innerHTML=(P[p]||P.dashboard)();
+  document.getElementById('content').scrollTop=0;
+  if(AR[p]) AR[p]();
+}
+document.querySelectorAll('.nav-item[data-p]').forEach(n=>n.addEventListener('click',()=>go(n.dataset.p)));
+
+const P={}, AR={};
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 1 — DASHBOARD
+═══════════════════════════════════════════════ */
+P.dashboard = ()=>{
+  const on=DB.sites.filter(s=>s.status==='on').length;
+  const sslOn=DB.sites.filter(s=>s.ssl).length;
+  const cached=DB.sites.filter(s=>s.cache).length;
+  return `
+<div class="g4 mb14">
+  <div class="stat"><div class="stat-label">Total Sites</div><div class="stat-val">${DB.sites.length}</div><div class="stat-sub"><i class="ti ti-circle-check" style="color:var(--ok)"></i>${on} aktif</div></div>
+  <div class="stat"><div class="stat-label">SSL Aktif</div><div class="stat-val" style="color:var(--accent)">${sslOn}</div><div class="stat-sub"><i class="ti ti-lock" style="color:var(--accent)"></i>Let's Encrypt</div></div>
+  <div class="stat"><div class="stat-label">Cache Aktif</div><div class="stat-val" style="color:var(--warn)">${cached}</div><div class="stat-sub"><i class="ti ti-bolt" style="color:var(--warn)"></i>site ter-cache</div></div>
+  <div class="stat"><div class="stat-label">Status Server</div><div class="stat-val" style="color:var(--ok)">OK</div><div class="stat-sub"><i class="ti ti-server" style="color:var(--ok)"></i>Semua service up</div></div>
+</div>
+
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-server-cog"></i>Service Status</div></div>
+    ${[
+      ['Nginx 1.25.3','ok','Running'],
+      ['PHP-FPM 8.3','ok','Running'],
+      ['MariaDB 10.11','ok','Running'],
+      ['Redis 7.2 — Hit 94%','ok','Running'],
+      ["Let's Encrypt",'ok','Auto-renew aktif'],
+    ].map(([n,t,s])=>`
+    <div class="fx fxc fxb" style="padding:7px 0;border-bottom:1px solid var(--border)">
+      <span class="f13">${n}</span>
+      <span class="badge b-${t}"><i class="ti ti-circle-check"></i>${s}</span>
+    </div>`).join('')}
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-activity"></i>Resource Usage</div></div>
+    ${[
+      ['CPU','18%','#2563eb',18],
+      ['RAM','1.4 / 4 GB','#16a34a',35],
+      ['Disk','22 / 80 GB','#d97706',27],
+      ['Swap','64 / 512 MB','#7c3aed',12],
+    ].map(([l,v,c,p])=>`
+    <div class="mb12">
+      <div class="fx fxb f12 mb6" style="margin-bottom:4px">
+        <span class="t2">${l}</span>
+        <span class="mono f600" style="color:${c}">${v}</span>
+      </div>
+      <div class="prog"><div class="prog-fill" style="width:${p}%;background:${c}"></div></div>
+    </div>`).join('')}
+    <div class="fx fxb f12" style="padding-top:10px;border-top:1px solid var(--border);margin-top:6px">
+      <span class="t2">Uptime</span>
+      <span class="mono f600">12d 7h 21m</span>
+    </div>
+  </div>
+</div>
+
+<div class="card mb14">
+  <div class="card-hd">
+    <div class="card-title"><i class="ti ti-world"></i>Sites</div>
+    <button class="btn btn-sm" onclick="go('sites')"><i class="ti ti-list"></i>Lihat Semua</button>
+  </div>
+  ${DB.sites.slice(0,5).map(s=>`
+  <div class="site-row" onclick="showSiteModal('${esc(s.domain)}')">
+    <div class="site-ic"><i class="ti ${typeIcon(s.type)}"></i></div>
+    <div class="site-info">
+      <div class="site-domain">${esc(s.domain)}</div>
+      <div class="site-meta">
+        <span class="badge ${typeBadge(s.type)}">${typeLabel(s.type)}</span>
+        ${s.php?`<span class="badge b-neu mono">PHP ${s.php}</span>`:''}
+        ${s.ssl?'<span class="badge b-ok"><i class="ti ti-lock"></i>SSL</span>':''}
+        ${s.cache?'<span class="badge b-warn"><i class="ti ti-bolt"></i>Cache</span>':''}
+        ${s.redis?'<span class="badge b-info">Redis</span>':''}
+      </div>
+    </div>
+    ${statusBadge(s.status)}
+  </div>`).join('')}
+</div>
+
+<div class="card">
+  <div class="card-hd">
+    <div class="card-title"><i class="ti ti-terminal"></i>Terminal — Output Terakhir</div>
+    <button class="btn btn-sm" onclick="go('logs')">Log Viewer</button>
+  </div>
+  <div class="terminal">
+    <div class="term-hd">
+      <div class="term-dot" style="background:#ff5f57"></div>
+      <div class="term-dot" style="background:#febc2e"></div>
+      <div class="term-dot" style="background:#28c840"></div>
+      <span class="term-lbl">root@vps-production-01</span>
+      <span class="badge b-ok" style="font-size:9px">Live</span>
+    </div>
+    <div class="term-body">
+      ${[
+        {t:'tl-out',v:'$ sudo webinoly -verify'},
+        {t:'tl-ok', v:'✓ Nginx 1.25.3 — running'},
+        {t:'tl-ok', v:'✓ PHP-FPM 8.3 — running'},
+        {t:'tl-ok', v:'✓ MariaDB 10.11 — running'},
+        {t:'tl-ok', v:'✓ Redis 7.2 — running'},
+        {t:'tl-ok', v:'✓ 5 sites active, 1 disabled'},
+        {t:'tl-out',v:'# All checks passed'},
+      ].map(l=>`<div class="${l.t}">${esc(l.v)}</div>`).join('')}
+      <div><span class="tl-cursor"></span></div>
+    </div>
+  </div>
+</div>`;
+};
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 2 — SITES
+═══════════════════════════════════════════════ */
+P.sites = ()=>`
+<div class="fx fxc gap8 mb14">
+  <div class="search flex1" style="max-width:260px">
+    <i class="ti ti-search"></i>
+    <input placeholder="Cari domain..." oninput="filterSites(this.value)" style="width:100%;background:none;border:none;outline:none;font-family:var(--font);font-size:13px;color:var(--text)">
+  </div>
+  <select class="fselect" style="width:140px" onchange="filterType(this.value)">
+    <option value="">Semua Tipe</option>
+    <option value="wp">WordPress</option>
+    <option value="php">PHP</option>
+    <option value="html">HTML</option>
+    <option value="proxy">Proxy</option>
+  </select>
+  <div style="margin-left:auto">
+    <button class="btn btn-primary btn-sm" onclick="go('create')"><i class="ti ti-plus"></i>Buat Site Baru</button>
+  </div>
+</div>
+<div id="site-list">
+${DB.sites.map(siteRow).join('')}
+</div>`;
+
+function siteRow(s){
+  const id=s.domain.replace(/[\.\-\/]/g,'_');
+  return `
+<div class="site-row" id="sr_${id}" data-domain="${esc(s.domain)}" data-type="${s.type}" data-status="${s.status}">
+  <div class="site-ic"><i class="ti ${typeIcon(s.type)}"></i></div>
+  <div class="site-info">
+    <div class="site-domain">${esc(s.domain)}</div>
+    <div class="site-meta">
+      <span class="badge ${typeBadge(s.type)}">${typeLabel(s.type)}</span>
+      ${s.php?`<span class="badge b-neu mono f11">PHP ${s.php}</span>`:''}
+      ${sslBadge(s.ssl)}
+      ${s.cache?'<span class="badge b-warn"><i class="ti ti-bolt"></i>Cache</span>':''}
+      ${s.redis?'<span class="badge b-info">Redis</span>':''}
+      <span class="f11 t3">${s.size}</span>
+    </div>
+  </div>
+  <div class="site-acts">
+    ${statusBadge(s.status)}
+    <button class="btn btn-icon btn-sm" title="Info" onclick="showSiteModal('${esc(s.domain)}')"><i class="ti ti-info-circle"></i></button>
+    <button class="btn btn-icon btn-sm" title="Clear Cache" onclick="clearCache('${esc(s.domain)}')"><i class="ti ti-bolt"></i></button>
+    <button class="btn btn-icon btn-sm" title="${s.status==='on'?'Disable':'Enable'}" onclick="toggleStatus('${esc(s.domain)}')"><i class="ti ti-power"></i></button>
+    <button class="btn btn-icon btn-sm del" title="Hapus" onclick="confirmDel('${esc(s.domain)}')"><i class="ti ti-trash"></i></button>
+  </div>
+</div>`;
+}
+
+function filterSites(q){
+  document.querySelectorAll('.site-row[data-domain]').forEach(r=>{
+    r.style.display=!q||r.dataset.domain.includes(q.toLowerCase())?'flex':'none';
+  });
+}
+function filterType(v){
+  document.querySelectorAll('.site-row[data-domain]').forEach(r=>{
+    r.style.display=!v||r.dataset.type===v?'flex':'none';
+  });
+}
+
+function switchLogTab(el, type){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const labels = {access:'Access Log',error:'Error Log',php:'PHP Log',mysql:'MySQL Log'};
+  toast('Menampilkan ' + (labels[type]||type) + '...','info',1500);
+}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 3 — BUAT SITE
+═══════════════════════════════════════════════ */
+P.create = ()=>`
+<div style="max-width:520px">
+<div class="card">
+  <div class="card-hd"><div class="card-title"><i class="ti ti-plus"></i>Buat Site Baru</div></div>
+
+  <div class="fg">
+    <label class="flabel">Nama Domain</label>
+    <input class="finput" placeholder="example.com" id="c-domain" oninput="updatePreview()">
+  </div>
+
+  <div class="fg">
+    <label class="flabel">Tipe Site</label>
+    <select class="fselect" id="c-type" onchange="onTypeChange();updatePreview()">
+      <option value="html">HTML — Site Statis</option>
+      <option value="php">PHP — Aplikasi PHP</option>
+      <option value="wp" selected>WordPress</option>
+      <option value="proxy">Reverse Proxy</option>
+    </select>
+  </div>
+
+  <div id="c-proxy-row" style="display:none" class="fg">
+    <label class="flabel">Target Proxy</label>
+    <input class="finput" placeholder="localhost:3000" id="c-proxy" oninput="updatePreview()">
+    <p class="f11 t3 mt8" style="margin-top:5px">Contoh: localhost:8080 — untuk Node.js, Java, dll</p>
+  </div>
+
+  <div id="c-php-row">
+    <div class="fg">
+      <label class="flabel">Versi PHP</label>
+      <select class="fselect" id="c-php" onchange="updatePreview()">
+        <option value="8.3" selected>PHP 8.3 (Terbaru)</option>
+        <option value="8.2">PHP 8.2</option>
+        <option value="8.1">PHP 8.1</option>
+        <option value="7.4">PHP 7.4 (Legacy)</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="c-wp-row">
+    <div class="fg">
+      <label class="flabel">Opsi WordPress</label>
+      <div class="ftoggle mb10" onclick="togEl(this);updatePreview()" id="t-cache">
+        <div class="track on"></div>
+        <div class="ftoggle-txt"><strong>FastCGI Cache</strong><span>Page cache Nginx — sangat cepat</span></div>
+      </div>
+      <div class="ftoggle" onclick="togEl(this);updatePreview()" id="t-redis">
+        <div class="track"></div>
+        <div class="ftoggle-txt"><strong>Redis Object Cache</strong><span>Cache query database</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fg">
+    <div class="ftoggle" onclick="togEl(this);updatePreview()" id="t-ssl">
+      <div class="track on"></div>
+      <div class="ftoggle-txt"><strong>SSL Otomatis</strong><span>Let's Encrypt — gratis & auto-renew</span></div>
+    </div>
+  </div>
+
+  <div class="cmd-box mb14">
+    <div class="cmd-label">Command yang akan dijalankan</div>
+    <div id="cmd-lines"><div class="cmd-line">sudo site example.com -wp -cache=on</div></div>
+  </div>
+
+  <div class="fx gap8">
+    <button class="btn flex1" onclick="go('sites')">Batal</button>
+    <button class="btn btn-primary" style="flex:2;justify-content:center" onclick="doCreate()"><i class="ti ti-rocket"></i>Deploy Site</button>
+  </div>
+</div>
+</div>`;
+
+AR.create = ()=>updatePreview();
+
+function onTypeChange(){
+  const t=document.getElementById('c-type').value;
+  document.getElementById('c-proxy-row').style.display=t==='proxy'?'block':'none';
+  document.getElementById('c-php-row').style.display=(t==='php'||t==='wp')?'block':'none';
+  document.getElementById('c-wp-row').style.display=t==='wp'?'block':'none';
+}
+function togEl(el){ el.querySelector('.track').classList.toggle('on'); updatePreview(); }
+function isOn(id){ const el=document.getElementById(id); return el&&!!el.querySelector('.track.on'); }
+function updatePreview(){
+  const d=(document.getElementById('c-domain')||{}).value||'example.com';
+  const t=(document.getElementById('c-type')||{}).value||'wp';
+  const px=(document.getElementById('c-proxy')||{}).value||'localhost:3000';
+  const cache=isOn('t-cache'), redis=isOn('t-redis'), ssl=isOn('t-ssl');
+  let cmds=[];
+  if(t==='proxy') cmds.push(`sudo site ${d} -proxy=[${px}]`);
+  else if(t==='wp'){
+    let c=`sudo site ${d} -wp`;
+    if(cache) c+=' -cache=on';
+    if(redis) c+=' -redis=on';
+    cmds.push(c);
+  } else cmds.push(`sudo site ${d} -${t}`);
+  if(ssl) cmds.push(`sudo site ${d} -ssl=on`);
+  const box=document.getElementById('cmd-lines');
+  if(box) box.innerHTML=cmds.map(c=>`<div class="cmd-line">${esc(c)}</div>`).join('');
+}
+async function doCreate(){
+  const d=(document.getElementById('c-domain')||{}).value.trim();
+  if(!d){ toast('Masukkan nama domain!','err'); return; }
+  if(!/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]+)?\.[a-zA-Z]{2,}$/.test(d)){ toast('Format domain tidak valid!','err'); return; }
+  if(DB.sites.find(s=>s.domain===d)){ toast('Domain sudah ada!','warn'); return; }
+  const t  = document.getElementById('c-type').value;
+  const php= (document.getElementById('c-php')||{}).value||'8.3';
+  const px = (document.getElementById('c-proxy')||{}).value||'';
+  const cache=isOn('t-cache'), redis=isOn('t-redis'), ssl=isOn('t-ssl');
+
+  toast('Deploying '+d+'...','info',3000);
+  const result = await apiFetch('site_create',{domain:d, type:t, php, proxy:px, cache, redis, ssl});
+
+  if(result.success !== false){
+    DB.sites.unshift({domain:d, type:t, status:'on', ssl, cache, redis,
+      php:t==='wp'||t==='php'?php:null,
+      db:t==='wp'?'wp_'+d.replace(/\./g,'_'):null, size:'—'});
+    DB.cacheState[d]=cache;
+    document.getElementById('nb-sites').textContent=DB.sites.length;
+    document.getElementById('nb-cache').textContent=DB.sites.filter(s=>s.cache).length;
+    toast(d+' berhasil dibuat ✓','ok');
+    if(result.output) showOutputModal('site_create: '+d, result.output,'ok');
+    go('sites');
+  } else {
+    toast(result.error||'Gagal membuat site','err',5000);
+    if(result.output) showOutputModal('site_create: '+d, result.output,'err');
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 4 — STACK
+═══════════════════════════════════════════════ */
+P.stack = ()=>`
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-brand-nginx"></i>Nginx</div><span class="badge b-ok">Stable</span></div>
+    <table class="tbl mb14">
+      <tr><td>Versi</td><td>1.25.3</td></tr>
+      <tr><td>Branch</td><td>stable</td></tr>
+      <tr><td>Workers</td><td>auto (4 core)</td></tr>
+      <tr><td>HTTP/2</td><td><span class="badge b-ok">Aktif</span></td></tr>
+      <tr><td>HTTP/3</td><td><span class="badge b-ok">Aktif</span></td></tr>
+      <tr><td>Gzip</td><td><span class="badge b-ok">Aktif</span></td></tr>
+    </table>
+    <div class="fx gap6">
+      <button class="btn btn-sm" onclick="runCmd('sudo systemctl reload nginx','Nginx reloaded ✓')"><i class="ti ti-refresh"></i>Reload</button>
+      <button class="btn btn-sm" onclick="runCmd('sudo systemctl restart nginx','Nginx restarted ✓')">Restart</button>
+      <button class="btn btn-sm" onclick="runCmd('sudo nginx -t','Config OK ✓')"><i class="ti ti-check"></i>Test Config</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-brand-php"></i>PHP-FPM</div><span class="badge b-ok">Running</span></div>
+    <table class="tbl mb14">
+      <tr><td>Versi Aktif</td><td>PHP 8.3</td></tr>
+      <tr><td>OPcache</td><td><span class="badge b-ok">Aktif</span></td></tr>
+      <tr><td>Memory Limit</td><td>256M</td></tr>
+      <tr><td>Max Upload</td><td>64M</td></tr>
+      <tr><td>Max Exec Time</td><td>300s</td></tr>
+    </table>
+    <div class="fg">
+      <label class="flabel">Install Versi PHP</label>
+      <div class="fx gap8">
+        <select class="fselect flex1" id="php-sel"><option>8.3</option><option>8.2</option><option>8.1</option><option>7.4</option></select>
+        <button class="btn btn-sm btn-primary" onclick="runCmd('sudo stack -php-ver='+document.getElementById('php-sel').value,'PHP terinstall ✓')"><i class="ti ti-download"></i>Install</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="g2">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-database"></i>MariaDB</div><span class="badge b-ok">Running</span></div>
+    <table class="tbl mb14">
+      <tr><td>Engine</td><td>MariaDB</td></tr>
+      <tr><td>Versi</td><td>10.11.6</td></tr>
+      <tr><td>Port</td><td>3306</td></tr>
+      <tr><td>Remote Access</td><td><span class="badge b-err">Disabled</span></td></tr>
+    </table>
+    <div class="fx gap6">
+      <button class="btn btn-sm" onclick="runCmd('sudo webinoly -dbpass','Password ditampilkan ✓')"><i class="ti ti-key"></i>Show Password</button>
+      <button class="btn btn-sm" onclick="runCmd('sudo webinoly -mysql-password','Password direset ✓')">Reset Pass</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-brand-redis"></i>Redis</div><span class="badge b-ok">Running</span></div>
+    <table class="tbl mb14">
+      <tr><td>Versi</td><td>7.2.4</td></tr>
+      <tr><td>Port</td><td>6379</td></tr>
+      <tr><td>Memory Used</td><td>42 / 128 MB</td></tr>
+      <tr><td>Hit Rate</td><td class="mono f600" style="color:var(--ok)">94.2%</td></tr>
+    </table>
+    <div class="fx gap6">
+      <button class="btn btn-sm" onclick="runCmd('sudo systemctl restart redis','Redis restarted ✓')">Restart</button>
+      <button class="btn btn-sm btn-danger" onclick="runCmd('redis-cli FLUSHALL','Cache Redis dibersihkan ✓')">Flush Cache</button>
+    </div>
+  </div>
+</div>`;
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 5 — CACHE
+═══════════════════════════════════════════════ */
+P.cache = ()=>`
+<div class="g3 mb14">
+  <div class="stat"><div class="stat-label">Hit Rate</div><div class="stat-val" style="color:var(--ok)">87%</div><div class="stat-sub"><i class="ti ti-trending-up" style="color:var(--ok)"></i>Optimal</div></div>
+  <div class="stat"><div class="stat-label">Cache Size</div><div class="stat-val" style="color:var(--accent)">2.4 GB</div><div class="stat-sub"><i class="ti ti-database" style="color:var(--accent)"></i>di disk</div></div>
+  <div class="stat"><div class="stat-label">Sites Cached</div><div class="stat-val" style="color:var(--warn)">${DB.sites.filter(s=>s.cache).length}</div><div class="stat-sub"><i class="ti ti-bolt" style="color:var(--warn)"></i>dari ${DB.sites.length} site</div></div>
+</div>
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-settings"></i>Pengaturan Global</div></div>
+    <div class="fg">
+      <label class="flabel">Durasi Cache</label>
+      <div class="fx gap8">
+        <select class="fselect flex1" id="cache-dur"><option value="1h">1 Jam</option><option value="6h">6 Jam</option><option value="12h">12 Jam</option><option value="1d" selected>1 Hari</option><option value="7d">7 Hari</option></select>
+        <button class="btn btn-sm" onclick="runCmd('sudo webinoly -cache-valid='+document.getElementById('cache-dur').value,'Durasi cache disimpan ✓')">Set</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="flabel">Exclude URL dari Cache</label>
+      <div class="fx gap8">
+        <input class="finput flex1" placeholder="/checkout /cart /my-account" id="skip-url">
+        <button class="btn btn-sm" onclick="runCmd('sudo webinoly -skip-cache='+document.getElementById('skip-url').value,'URL dikecualikan ✓')">Add</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="flabel">Exclude Cookie</label>
+      <div class="fx gap8">
+        <input class="finput flex1" placeholder="woocommerce_cart" id="skip-cookie">
+        <button class="btn btn-sm" onclick="runCmd('sudo webinoly -skip-cookie-cache='+document.getElementById('skip-cookie').value,'Cookie dikecualikan ✓')">Add</button>
+      </div>
+    </div>
+    <button class="btn btn-danger w100 mt12" style="margin-top:10px" onclick="runCmd('sudo webinoly -clear-cache','Semua cache dibersihkan ✓')"><i class="ti ti-trash"></i>Clear Semua Cache</button>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-toggle-right"></i>Cache Per Site</div></div>
+    ${DB.sites.filter(s=>s.type!=='html'&&s.type!=='proxy').map(s=>`
+    <div class="fx fxc" style="padding:9px 0;border-bottom:1px solid var(--border);gap:10px">
+      <div class="site-ic" style="width:26px;height:26px;font-size:12px;flex-shrink:0"><i class="ti ${typeIcon(s.type)}"></i></div>
+      <div class="flex1 mono f12">${esc(s.domain)}</div>
+      ${s.redis?'<span class="badge b-info f11">Redis</span>':''}
+      <div class="ftoggle" style="padding:0" onclick="togCacheSite('${esc(s.domain)}',this)">
+        <div class="track ${DB.cacheState[s.domain]?'on':''}"></div>
+        <div class="ftoggle-txt"></div>
+      </div>
+      <button class="btn btn-icon btn-sm" onclick="clearCache('${esc(s.domain)}')"><i class="ti ti-bolt"></i></button>
+    </div>`).join('')}
+  </div>
+</div>`;
+
+async function togCacheSite(d,el){
+  const newState = !DB.cacheState[d];
+  const result = await apiFetch('cache_toggle',{domain:d, state:newState?'on':'off'});
+  if(result.success !== false){
+    DB.cacheState[d] = newState;
+    el.querySelector('.track').classList.toggle('on', newState);
+    const s=DB.sites.find(x=>x.domain===d); if(s) s.cache=newState;
+    document.getElementById('nb-cache').textContent=DB.sites.filter(s=>s.cache).length;
+    toast('Cache '+d+' '+(newState?'diaktifkan':'dinonaktifkan')+' ✓','ok');
+  } else {
+    toast(result.error||'Gagal toggle cache','err',4000);
+  }
+}
+async function clearCache(d){
+  const result = await apiFetch('cache_clear',{domain:d});
+  if(result.success !== false){
+    toast('Cache '+d+' dibersihkan ✓','ok');
+  } else {
+    toast(result.error||'Gagal clear cache','err',4000);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 6 — SSL
+═══════════════════════════════════════════════ */
+P.ssl = ()=>`
+<div class="notice n-info mb14"><i class="ti ti-info-circle"></i>SSL hanya bisa diaktifkan jika DNS A record domain sudah mengarah ke IP server. Pastikan port 80 & 443 terbuka.</div>
+<div class="card">
+  <div class="card-hd"><div class="card-title"><i class="ti ti-lock"></i>SSL Per Site</div></div>
+  ${DB.sites.map(s=>`
+  <div class="fx fxc" style="padding:11px 0;border-bottom:1px solid var(--border);gap:10px">
+    <div class="site-ic" style="flex-shrink:0"><i class="ti ${typeIcon(s.type)}"></i></div>
+    <div class="flex1">
+      <div class="mono f13 f500">${esc(s.domain)}</div>
+      <div class="f11 t3 mt8" style="margin-top:2px">${s.ssl?'Expires: ~90 hari · Auto-renew aktif':'Belum ada SSL certificate'}</div>
+    </div>
+    ${sslBadge(s.ssl)}
+    <div class="fx gap6">
+      ${s.ssl
+        ?`<button class="btn btn-sm" onclick="runCmd('sudo site ${s.domain} -ssl=renew','SSL di-renew ✓')"><i class="ti ti-refresh"></i>Renew</button>
+          <button class="btn btn-sm btn-danger" onclick="runCmd('sudo site ${s.domain} -ssl=off','SSL dinonaktifkan')">Off</button>`
+        :`<button class="btn btn-sm btn-success" onclick="runCmd('sudo site ${s.domain} -ssl=on','SSL ${s.domain} aktif ✓')"><i class="ti ti-lock"></i>Aktifkan</button>`}
+    </div>
+  </div>`).join('')}
+</div>`;
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 7 — DATABASE
+═══════════════════════════════════════════════ */
+P.database = ()=>`
+<div class="notice n-warn mb14"><i class="ti ti-alert-triangle"></i>Password hanya ditampilkan di terminal server, bukan di sini, demi keamanan.</div>
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-database"></i>Database per Site</div></div>
+    ${DB.sites.filter(s=>s.db).map(s=>`
+    <div class="fx fxc" style="padding:9px 0;border-bottom:1px solid var(--border);gap:10px">
+      <div class="flex1">
+        <div class="mono f12 f500" style="color:var(--accent)">${esc(s.db)}</div>
+        <div class="f11 t3 mt8" style="margin-top:2px">${esc(s.domain)} · ${s.size}</div>
+      </div>
+      <button class="btn btn-sm" onclick="runCmd('sudo webinoly -db-import=${s.domain}','Import selesai ✓')"><i class="ti ti-upload"></i>Import</button>
+    </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-key"></i>Credentials</div></div>
+    <button class="btn w100 mb10" onclick="runCmd('sudo webinoly -dbpass','Password ditampilkan di terminal ✓')"><i class="ti ti-eye"></i>Tampilkan Password DB</button>
+    <button class="btn w100 mb10" onclick="runCmd('sudo webinoly -mysql-password','Password di-reset ✓')"><i class="ti ti-key"></i>Reset Password MySQL</button>
+    <hr class="divider">
+    <div class="ftoggle" onclick="togEl(this);runCmd('sudo webinoly -mysql-public-access=on','Remote access diupdate ✓')">
+      <div class="track"></div>
+      <div class="ftoggle-txt"><strong>Remote MySQL Access</strong><span>Izinkan koneksi dari luar server</span></div>
+    </div>
+  </div>
+</div>`;
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 8 — HTTP AUTH
+═══════════════════════════════════════════════ */
+P.httpauth = ()=>`
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title"><i class="ti ti-users"></i>HTTP Auth Users</div>
+      <button class="btn btn-sm btn-primary" onclick="showAddUserModal()"><i class="ti ti-plus"></i>Tambah</button>
+    </div>
+    ${DB.httpUsers.map((u,i)=>`
+    <div class="fx fxc" style="padding:10px 0;border-bottom:1px solid var(--border);gap:10px">
+      <div class="site-ic"><i class="ti ti-user"></i></div>
+      <div class="flex1">
+        <div class="f13 f500 mono">${esc(u.user)}</div>
+        <div class="f11 t3 mt8" style="margin-top:2px">${esc(u.scope)} · Dibuat ${u.created}</div>
+      </div>
+      <button class="btn btn-icon btn-sm del" onclick="delUser(${i})"><i class="ti ti-trash"></i></button>
+    </div>`).join('')}
+    ${!DB.httpUsers.length?'<p class="f12 t3" style="text-align:center;padding:16px">Belum ada user</p>':''}
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-shield"></i>Proteksi WP Admin</div></div>
+    <div class="notice n-info mb14"><i class="ti ti-info-circle"></i>HTTP Auth melindungi wp-login.php dan /wp-admin/ dari brute force secara otomatis.</div>
+    ${DB.sites.filter(s=>s.type==='wp').map(s=>`
+    <div class="fx fxc" style="padding:8px 0;border-bottom:1px solid var(--border);gap:10px">
+      <div class="flex1 mono f12">${esc(s.domain)}</div>
+      <div class="ftoggle" style="padding:0" onclick="this.querySelector('.track').classList.toggle('on');runCmd('sudo httpauth -wp-admin=on','Diupdate ✓')">
+        <div class="track on"></div><div class="ftoggle-txt"></div>
+      </div>
+    </div>`).join('')}
+    <hr class="divider">
+    <div class="fg">
+      <label class="flabel">Whitelist IP</label>
+      <div class="fx gap8">
+        <input class="finput flex1" placeholder="192.168.1.100" id="wl-ip">
+        <button class="btn btn-sm" onclick="runCmd('sudo httpauth -whitelist='+document.getElementById('wl-ip').value,'IP di-whitelist ✓')">Add</button>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+function showAddUserModal(){
+  openModal(`
+  <div class="modal-hd"><div class="modal-ttl"><i class="ti ti-user-plus"></i>Tambah User</div><button class="btn btn-icon btn-sm" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <div class="fg"><label class="flabel">Username</label><input class="finput" id="au-u" placeholder="username"></div>
+    <div class="fg"><label class="flabel">Password</label><input class="finput" type="password" id="au-p" placeholder="Min 8 karakter"></div>
+    <div class="fg"><label class="flabel">Scope</label>
+      <select class="fselect" id="au-s"><option value="Semua Site">Semua Site</option>${DB.sites.map(s=>`<option value="${esc(s.domain)}">${esc(s.domain)}</option>`).join('')}</select>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn" onclick="closeModal()">Batal</button>
+    <button class="btn btn-primary" onclick="doAddUser()"><i class="ti ti-check"></i>Simpan</button>
+  </div>`);
+}
+async function doAddUser(){
+  const u=(document.getElementById('au-u')||{}).value.trim();
+  const p=(document.getElementById('au-p')||{}).value;
+  const s=(document.getElementById('au-s')||{}).value;
+  if(!u||!p){ toast('Isi username dan password!','err'); return; }
+  if(p.length<6){ toast('Password minimal 6 karakter!','err'); return; }
+  const result = await apiFetch('httpauth_add',{username:u, password:p, scope:s});
+  if(result.success !== false){
+    DB.httpUsers.push({user:u, scope:s, created:new Date().toISOString().slice(0,10)});
+    toast('User "'+u+'" ditambahkan ✓','ok');
+    closeModal();
+    setTimeout(()=>go('httpauth'),400);
+  } else {
+    toast(result.error||'Gagal tambah user','err',4000);
+  }
+}
+function delUser(i){
+  const u = DB.httpUsers[i];
+  openModal(`
+  <div class="modal-hd"><div class="modal-ttl" style="color:var(--err)"><i class="ti ti-trash"></i>Hapus User?</div><button class="btn btn-icon btn-sm" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body"><p class="f13">Yakin hapus user <strong class="mono">${esc(u.user)}</strong>?</p></div>
+  <div class="modal-ft">
+    <button class="btn" onclick="closeModal()">Batal</button>
+    <button class="btn btn-danger" onclick="doDelUser(${i})"><i class="ti ti-trash"></i>Hapus</button>
+  </div>`);
+}
+async function doDelUser(i){
+  const u = DB.httpUsers[i];
+  const result = await apiFetch('httpauth_delete',{username:u.user});
+  if(result.success !== false){
+    DB.httpUsers.splice(i,1);
+    toast('User "'+u.user+'" dihapus','ok');
+    closeModal();
+    setTimeout(()=>go('httpauth'),400);
+  } else {
+    toast(result.error||'Gagal hapus user','err',4000);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 9 — BLOCK IP
+═══════════════════════════════════════════════ */
+P.blockip = ()=>`
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-ban"></i>Blokir IP Baru</div></div>
+    <div class="fg"><label class="flabel">IP / CIDR</label><input class="finput" placeholder="1.2.3.4 atau 192.168.0.0/24" id="new-ip"></div>
+    <div class="fg"><label class="flabel">Alasan</label><input class="finput" placeholder="Bot, brute force, spam..." id="new-reason"></div>
+    <button class="btn btn-danger w100" onclick="doBlock()"><i class="ti ti-ban"></i>Blokir IP</button>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-list"></i>IP Diblokir <span class="badge b-err">${DB.blockedIPs.length}</span></div></div>
+    ${DB.blockedIPs.map((b,i)=>`
+    <div class="fx fxc" style="padding:9px 0;border-bottom:1px solid var(--border);gap:10px">
+      <i class="ti ti-ban" style="color:var(--err);font-size:14px;flex-shrink:0"></i>
+      <div class="flex1"><div class="mono f12 f500">${esc(b.ip)}</div><div class="f11 t3">${esc(b.reason)} · ${b.added}</div></div>
+      <button class="btn btn-sm" onclick="doUnblock(${i})">Unblock</button>
+    </div>`).join('')}
+    ${!DB.blockedIPs.length?'<p class="f12 t3" style="text-align:center;padding:16px">Tidak ada IP yang diblokir</p>':''}
+  </div>
+</div>`;
+
+async function doBlock(){
+  const ip=(document.getElementById('new-ip')||{}).value.trim();
+  const reason=(document.getElementById('new-reason')||{}).value.trim()||'Manual';
+  if(!ip){ toast('Masukkan IP!','err'); return; }
+  if(DB.blockedIPs.find(b=>b.ip===ip)){ toast('IP sudah diblokir!','warn'); return; }
+  const result = await apiFetch('blockip_add',{ip});
+  if(result.success !== false){
+    DB.blockedIPs.push({ip, reason, added:new Date().toISOString().slice(0,10)});
+    toast('IP '+ip+' diblokir ✓','ok');
+    go('blockip');
+  } else {
+    toast(result.error||'Gagal blokir IP','err',4000);
+  }
+}
+async function doUnblock(i){
+  const b=DB.blockedIPs[i];
+  const result = await apiFetch('blockip_remove',{ip:b.ip});
+  if(result.success !== false){
+    DB.blockedIPs.splice(i,1);
+    toast('IP '+b.ip+' di-unblock ✓','ok');
+    go('blockip');
+  } else {
+    toast(result.error||'Gagal unblock IP','err',4000);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 10 — SFTP
+═══════════════════════════════════════════════ */
+P.sftp = ()=>`
+<div style="max-width:500px">
+<div class="card mb14">
+  <div class="card-hd"><div class="card-title"><i class="ti ti-folder-bolt"></i>SFTP Access</div></div>
+  <div class="notice n-info mb14"><i class="ti ti-info-circle"></i>SFTP memberi akses upload/download file ke <span class="mono">www-data</span> tanpa akses SSH shell penuh. Aman untuk developer.</div>
+  <div class="fg">
+    <div class="ftoggle" onclick="this.querySelector('.track').classList.toggle('on')">
+      <div class="track"></div>
+      <div class="ftoggle-txt"><strong>Aktifkan SFTP</strong><span>User www-data bisa connect via SFTP</span></div>
+    </div>
+  </div>
+  <hr class="divider">
+  <table class="tbl mb14">
+    <tr><td>Host</td><td>IP_SERVER_ANDA</td></tr>
+    <tr><td>Port</td><td class="mono">22</td></tr>
+    <tr><td>Username</td><td class="mono">www-data</td></tr>
+    <tr><td>Auth</td><td>Password</td></tr>
+    <tr><td>Root Dir</td><td class="mono">/var/www/</td></tr>
+  </table>
+  <div class="fx gap8">
+    <button class="btn btn-success flex1" style="justify-content:center" onclick="runCmd('sudo webinoly -sftp=on','SFTP aktif ✓')"><i class="ti ti-plug-connected"></i>Aktifkan</button>
+    <button class="btn btn-danger flex1" style="justify-content:center" onclick="runCmd('sudo webinoly -sftp=off','SFTP dinonaktifkan')"><i class="ti ti-plug"></i>Nonaktifkan</button>
+  </div>
+</div>
+<div class="notice n-warn"><i class="ti ti-alert-triangle"></i>Rekomendasi client: FileZilla, Cyberduck, atau WinSCP.</div>
+</div>`;
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 11 — LOGS
+═══════════════════════════════════════════════ */
+P.logs = ()=>`
+<div class="tabs">
+  <div class="tab active">Access Log</div>
+  <div class="tab" onclick="toast('Segera hadir','info')">Error Log</div>
+  <div class="tab" onclick="toast('Segera hadir','info')">PHP Log</div>
+  <div class="tab" onclick="toast('Segera hadir','info')">MySQL Log</div>
+</div>
+<div class="fx fxc gap8 mb14">
+  <select class="fselect" style="width:200px">
+    <option>Semua Site</option>
+    ${DB.sites.map(s=>`<option>${esc(s.domain)}</option>`).join('')}
+  </select>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <button class="btn btn-sm btn-success" onclick="toast('Live mode aktif','ok')"><i class="ti ti-player-play"></i>Live Mode</button>
+    <button class="btn btn-sm" onclick="toast('Log didownload','info')"><i class="ti ti-download"></i>Export</button>
+  </div>
+</div>
+<div class="terminal">
+  <div class="term-hd">
+    <div class="term-dot" style="background:#ff5f57"></div>
+    <div class="term-dot" style="background:#febc2e"></div>
+    <div class="term-dot" style="background:#28c840"></div>
+    <span class="term-lbl">Nginx Access Log</span>
+    <span class="badge b-ok" style="font-size:9px"><span class="sc-dot" style="width:5px;height:5px;margin-right:3px"></span>Live</span>
+  </div>
+  <div style="overflow-y:auto;max-height:420px">
+    <div style="display:flex;gap:10px;padding:5px 14px;border-bottom:1px solid #2a2d35;font-family:var(--mono);font-size:10px;color:#374151;font-weight:600;text-transform:uppercase;letter-spacing:.07em">
+      <span style="min-width:75px">Waktu</span><span style="min-width:40px">Status</span><span style="min-width:130px">Domain</span><span>Request</span>
+    </div>
+    ${[
+      ['10:47:33','200','example.com','GET / — HIT [FastCGI] · 0.002s'],
+      ['10:47:31','200','shop.example.com','POST /wp-admin/admin-ajax.php'],
+      ['10:47:28','200','api.example.com','GET /api/v1/products?page=2'],
+      ['10:47:25','404','example.com','GET /wp-content/plugins/xyz/file.php'],
+      ['10:47:22','403','example.com','GET /wp-config.php · IP:185.191.171.0 [BLOCKED]'],
+      ['10:47:20','301','example.com','GET http://example.com → https://example.com'],
+      ['10:47:18','200','shop.example.com','GET /wp-json/wc/v3/products — HIT [Redis]'],
+      ['10:47:15','500','shop.example.com','PHP Fatal error · plugins/bad/init.php'],
+      ['10:47:12','200','static.io','GET /assets/main.css — Browser cache'],
+      ['10:47:08','304','api.example.com','GET /api/v1/status — Not Modified'],
+      ['10:47:05','401','example.com','POST /wp-login.php — Auth required'],
+      ['10:47:03','200','node.internal.id','GET / [Proxy → localhost:3000] · 45ms'],
+    ].map(([t,s,d,m])=>`
+    <div style="display:flex;gap:10px;padding:5px 14px;border-bottom:1px solid #1a1d22;font-family:var(--mono);font-size:11px">
+      <span style="min-width:75px;color:#4a5568">${t}</span>
+      <span style="min-width:40px;font-weight:600;color:${s[0]==='2'?'#74c99b':s[0]==='3'?'#60a5fa':s[0]==='4'?'#fbbf24':'#f87171'}">${s}</span>
+      <span style="min-width:130px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d}</span>
+      <span style="color:#6b7280;word-break:break-all">${esc(m)}</span>
+    </div>`).join('')}
+  </div>
+</div>`;
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 12 — BACKUP
+═══════════════════════════════════════════════ */
+P.backup = ()=>`
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-cloud-upload"></i>Konfigurasi Backup</div></div>
+    <div class="fg"><label class="flabel">Storage</label><select class="fselect"><option>Lokal</option><option>S3-Compatible</option><option>Keduanya</option></select></div>
+    <div class="fg"><label class="flabel">S3 Bucket</label><input class="finput" placeholder="my-backup-bucket"></div>
+    <div class="fg"><label class="flabel">Access Key</label><input class="finput" placeholder="AKIAIOSFODNN7EXAMPLE"></div>
+    <div class="fg"><label class="flabel">Secret Key</label><input class="finput" type="password" placeholder="••••••••••••••••••••"></div>
+    <div class="fg"><label class="flabel">Jadwal</label><select class="fselect"><option>Setiap hari jam 00:00</option><option>Setiap 12 jam</option><option>Setiap minggu</option></select></div>
+    <div class="fg">
+      <label class="flabel">Yang Di-backup</label>
+      ${['File Website','Database MySQL','Konfigurasi Nginx'].map(item=>`
+      <div class="ftoggle mb10" onclick="this.querySelector('.track').classList.toggle('on')">
+        <div class="track on"></div><div class="ftoggle-txt">${item}</div>
+      </div>`).join('')}
+    </div>
+    <button class="btn btn-primary w100" onclick="runCmd('sudo webinoly -backup','Konfigurasi disimpan ✓')"><i class="ti ti-device-floppy"></i>Simpan Konfigurasi</button>
+  </div>
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title"><i class="ti ti-history"></i>Riwayat Backup</div>
+      <button class="btn btn-sm btn-primary" onclick="runCmd('sudo webinoly -backup','Backup dimulai ✓')"><i class="ti ti-player-play"></i>Run Now</button>
+    </div>
+    ${[
+      ['2026-05-15 02:00','4 Sites · 4.2 GB','ok'],
+      ['2026-05-14 02:00','4 Sites · 4.1 GB','ok'],
+      ['2026-05-13 02:00','4 Sites · 4.0 GB','ok'],
+      ['2026-05-12 02:00','4 Sites · 3.9 GB','ok'],
+      ['2026-05-11 02:00','4 Sites · —','err'],
+    ].map(([d,s,t])=>`
+    <div class="fx fxc" style="padding:9px 0;border-bottom:1px solid var(--border);gap:10px">
+      <i class="ti ti-${t==='ok'?'cloud-check':'cloud-x'}" style="color:var(--${t==='ok'?'ok':'err'});font-size:16px"></i>
+      <div class="flex1"><div class="mono f12 f500">${d}</div><div class="f11 t3">${s}</div></div>
+      <span class="badge ${t==='ok'?'b-ok':'b-err'}">${t==='ok'?'OK':'Gagal'}</span>
+      ${t==='ok'?'<button class="btn btn-icon btn-sm"><i class="ti ti-download"></i></button>':''}
+    </div>`).join('')}
+  </div>
+</div>`;
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 13 — SMTP
+═══════════════════════════════════════════════ */
+P.smtp = ()=>`
+<div style="max-width:500px">
+<div class="notice n-warn mb14"><i class="ti ti-alert-triangle"></i>Cloud provider sering memblokir port 25. Gunakan relay service: SendGrid, Mailgun, atau Amazon SES.</div>
+<div class="card">
+  <div class="card-hd"><div class="card-title"><i class="ti ti-mail"></i>Konfigurasi SMTP</div></div>
+  <div class="fg"><label class="flabel">Provider</label>
+    <select class="fselect" id="smtp-prov" onchange="fillSMTP(this.value)">
+      <option value="">Custom / Manual</option>
+      <option value="sendgrid">SendGrid</option>
+      <option value="mailgun">Mailgun</option>
+      <option value="ses">Amazon SES</option>
+      <option value="postmark">Postmark</option>
+    </select>
+  </div>
+  <div class="fg"><label class="flabel">SMTP Host</label><input class="finput" placeholder="smtp.sendgrid.net" id="smtp-host"></div>
+  <div class="g2">
+    <div class="fg"><label class="flabel">Port</label><select class="fselect"><option>587 — TLS (Rekomendasi)</option><option>465 — SSL</option><option>25</option></select></div>
+    <div class="fg"><label class="flabel">Enkripsi</label><select class="fselect"><option>TLS/STARTTLS</option><option>SSL</option></select></div>
+  </div>
+  <div class="fg"><label class="flabel">Username</label><input class="finput" placeholder="apikey" id="smtp-user"></div>
+  <div class="fg"><label class="flabel">Password / API Key</label><input class="finput" type="password" placeholder="••••••••••••••••"></div>
+  <div class="fg"><label class="flabel">From Email</label><input class="finput" placeholder="noreply@example.com"></div>
+  <div class="fx gap8">
+    <button class="btn flex1" style="justify-content:center" onclick="runCmd('echo Test | mail -s Test test@example.com','Test email terkirim ✓')"><i class="ti ti-send"></i>Test Email</button>
+    <button class="btn btn-primary" style="flex:2;justify-content:center" onclick="runCmd('sudo webinoly -smtp','SMTP disimpan ✓')"><i class="ti ti-device-floppy"></i>Simpan</button>
+  </div>
+</div>
+</div>`;
+
+function fillSMTP(v){
+  const m={sendgrid:['smtp.sendgrid.net','apikey'],mailgun:['smtp.mailgun.org','postmaster@domain'],ses:['email-smtp.us-east-1.amazonaws.com','AccessKeyId'],postmark:['smtp.postmarkapp.com','POSTMARK_API_TOKEN']};
+  if(m[v]){ document.getElementById('smtp-host').value=m[v][0]; document.getElementById('smtp-user').value=m[v][1]; }
+}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 14 — TOOLS
+═══════════════════════════════════════════════ */
+P.tools = ()=>`
+<div class="g3 mb14">
+  <div class="card" style="cursor:pointer" onclick="toast('Buka: http://IP:22222/pma','info')">
+    <i class="ti ti-database" style="font-size:22px;color:var(--accent);margin-bottom:10px;display:block"></i>
+    <div class="f13 f600 mb6">phpMyAdmin</div>
+    <div class="f11 t3">Kelola DB via GUI · Port 22222</div>
+  </div>
+  <div class="card" style="cursor:pointer" onclick="runCmd('sudo webinoly -verify','Semua konfigurasi valid ✓')">
+    <i class="ti ti-check" style="font-size:22px;color:var(--ok);margin-bottom:10px;display:block"></i>
+    <div class="f13 f600 mb6">Verify Config</div>
+    <div class="f11 t3">Cek semua konfigurasi server</div>
+  </div>
+  <div class="card" style="cursor:pointer" onclick="runCmd('sudo webinoly -update','Updated ✓')">
+    <i class="ti ti-refresh" style="font-size:22px;color:var(--warn);margin-bottom:10px;display:block"></i>
+    <div class="f13 f600 mb6">Update Webinoly</div>
+    <div class="f11 t3">Update ke versi terbaru</div>
+  </div>
+  <div class="card" style="cursor:pointer" onclick="runCmd('sudo webinoly -info','Info ditampilkan ✓')">
+    <i class="ti ti-info-circle" style="font-size:22px;color:var(--info);margin-bottom:10px;display:block"></i>
+    <div class="f13 f600 mb6">Server Info</div>
+    <div class="f11 t3">Tampilkan info server</div>
+  </div>
+  <div class="card" style="cursor:pointer" onclick="runCmd('sudo webinoly -clear-cache','Cache dibersihkan ✓')">
+    <i class="ti ti-bolt" style="font-size:22px;color:#7c3aed;margin-bottom:10px;display:block"></i>
+    <div class="f13 f600 mb6">Clear All Cache</div>
+    <div class="f11 t3">Bersihkan semua FastCGI cache</div>
+  </div>
+  <div class="card" style="cursor:pointer" onclick="confirmUninstall()">
+    <i class="ti ti-trash" style="font-size:22px;color:var(--err);margin-bottom:10px;display:block"></i>
+    <div class="f13 f600 mb6">Uninstall</div>
+    <div class="f11 t3">Hapus Webinoly (server tetap)</div>
+  </div>
+</div>
+<div class="g2">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-settings-2"></i>Port & Domain Admin Tools</div></div>
+    <div class="fg"><label class="flabel">Port Admin Tools</label>
+      <div class="fx gap8"><input class="finput flex1" value="22222" id="tools-port"><button class="btn btn-sm" onclick="runCmd('sudo webinoly -tools-port='+document.getElementById('tools-port').value,'Port diubah ✓')">Set</button></div>
+    </div>
+    <div class="fg"><label class="flabel">Akses via Domain</label>
+      <div class="fx gap8"><input class="finput flex1" placeholder="admin.example.com" id="tools-domain"><button class="btn btn-sm" onclick="runCmd('sudo webinoly -tools-site='+document.getElementById('tools-domain').value,'Domain diset ✓')">Set</button></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-heartbeat"></i>Quick Actions</div></div>
+    <button class="btn w100 mb10" onclick="runCmd('sudo systemctl reload nginx php8.3-fpm mariadb redis','Semua service reloaded ✓')"><i class="ti ti-refresh"></i>Reload Semua Service</button>
+    <button class="btn w100 mb10" onclick="runCmd('sudo webinoly -server-reset','Settings di-reset ✓')"><i class="ti ti-restore"></i>Reset Settings</button>
+    <button class="btn btn-danger w100" onclick="confirmPurge()"><i class="ti ti-trash"></i>Purge Server (Hapus Semua)</button>
+  </div>
+</div>`;
+
+function confirmUninstall(){
+  openModal(`
+  <div class="modal-hd"><div class="modal-ttl"><i class="ti ti-alert-triangle"></i>Uninstall Webinoly</div><button class="btn btn-icon btn-sm" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <p class="f13 mb12">Ini menghapus aplikasi Webinoly saja. Nginx, PHP, MariaDB <strong>tetap berjalan</strong>.</p>
+    <div class="notice n-info"><i class="ti ti-info-circle"></i>Untuk hapus semua software, gunakan Purge Server.</div>
+  </div>
+  <div class="modal-ft"><button class="btn" onclick="closeModal()">Batal</button><button class="btn btn-danger" onclick="runCmd('sudo webinoly -uninstall','Webinoly di-uninstall');closeModal()"><i class="ti ti-trash"></i>Uninstall</button></div>`);
+}
+function confirmPurge(){
+  openModal(`
+  <div class="modal-hd"><div class="modal-ttl" style="color:var(--err)"><i class="ti ti-skull"></i>Purge Server — BERBAHAYA!</div><button class="btn btn-icon btn-sm" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <div class="notice n-err mb14"><i class="ti ti-alert-triangle"></i><strong>PERINGATAN:</strong> Ini menghapus SEMUA software dan data. Tidak bisa dibatalkan!</div>
+    <div class="fg"><label class="flabel">Ketik PURGE untuk konfirmasi</label><input class="finput" id="purge-c" placeholder="PURGE"></div>
+  </div>
+  <div class="modal-ft"><button class="btn" onclick="closeModal()">Batal</button><button class="btn btn-danger" onclick="if(document.getElementById('purge-c').value==='PURGE'){runCmd('sudo stack -purge-server-all=force','Purge dimulai...');closeModal();}else{toast('Ketik PURGE!','err')}"><i class="ti ti-trash"></i>Purge</button></div>`);
+}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN 15 — SETTINGS
+═══════════════════════════════════════════════ */
+P.settings = ()=>`
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-adjustments"></i>Pengaturan Server</div></div>
+    <div class="fg"><label class="flabel">Timezone</label>
+      <div class="fx gap8">
+        <select class="fselect flex1"><option>Asia/Jakarta (WIB UTC+7)</option><option>Asia/Makassar (WITA UTC+8)</option><option>UTC</option></select>
+        <button class="btn btn-sm" onclick="runCmd('sudo webinoly -timezone','Timezone diupdate ✓')">Set</button>
+      </div>
+    </div>
+    <div class="fg"><label class="flabel">PHP Default</label><select class="fselect"><option>8.3</option><option>8.2</option><option>8.1</option></select></div>
+    <div class="fg"><label class="flabel">Nginx Branch</label><select class="fselect"><option>stable (Rekomendasi)</option><option>mainline</option></select></div>
+    <div class="fg">
+      <div class="ftoggle" onclick="this.querySelector('.track').classList.toggle('on')">
+        <div class="track on"></div>
+        <div class="ftoggle-txt"><strong>Shell Check</strong><span>Verifikasi Bash shell saat menjalankan command</span></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="runCmd('sudo webinoly -server-reset','Settings disimpan ✓')"><i class="ti ti-device-floppy"></i>Simpan</button>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-shield"></i>Security Headers</div></div>
+    ${[
+      ['Content-Security-Policy','Batasi sumber konten halaman'],
+      ['X-Frame-Options','Cegah clickjacking'],
+      ['HSTS','Paksa koneksi HTTPS'],
+      ['X-Content-Type-Options','Cegah MIME sniffing'],
+      ['Referrer-Policy','Kontrol info referrer'],
+      ['Permissions-Policy','Batasi fitur browser'],
+    ].map(([h,d])=>`
+    <div class="ftoggle mb10" onclick="this.querySelector('.track').classList.toggle('on')">
+      <div class="track on"></div>
+      <div class="ftoggle-txt"><strong class="mono f11">${h}</strong><span>${d}</span></div>
+    </div>`).join('')}
+    <button class="btn w100 mt12" style="margin-top:10px" onclick="runCmd('sudo webinoly -custom-headers','Headers disimpan ✓')"><i class="ti ti-device-floppy"></i>Simpan Headers</button>
+  </div>
+</div>
+<div class="g2">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-file-text"></i>Path File Penting</div></div>
+    <table class="tbl">
+      <tr><td>Config Webinoly</td><td class="mono f11">/opt/webinoly/webinoly.conf</td></tr>
+      <tr><td>Nginx Global</td><td class="mono f11">/etc/nginx/nginx.conf</td></tr>
+      <tr><td>Sites Available</td><td class="mono f11">/etc/nginx/sites-available/</td></tr>
+      <tr><td>Custom Nginx</td><td class="mono f11">/etc/nginx/apps.d/</td></tr>
+      <tr><td>Web Root</td><td class="mono f11">/var/www/</td></tr>
+      <tr><td>Log Nginx</td><td class="mono f11">/var/log/nginx/</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-info-circle"></i>Versi Stack</div></div>
+    <table class="tbl">
+      <tr><td>AIDI Panel</td><td><span class="badge b-ok">v1.0.0</span></td></tr>
+      <tr><td>Webinoly</td><td><span class="badge b-acc">v1.18.4</span></td></tr>
+      <tr><td>Ubuntu</td><td>24.04 LTS</td></tr>
+      <tr><td>Nginx</td><td class="mono">1.25.3</td></tr>
+      <tr><td>PHP</td><td class="mono">8.3.x</td></tr>
+      <tr><td>MariaDB</td><td class="mono">10.11.6</td></tr>
+      <tr><td>Redis</td><td class="mono">7.2.4</td></tr>
+    </table>
+  </div>
+</div>`;
+
+/* ═══════════════════════════════════════════════
+   SITE ACTIONS
+═══════════════════════════════════════════════ */
+function showSiteModal(domain){
+  const s=DB.sites.find(x=>x.domain===domain); if(!s) return;
+  openModal(`
+  <div class="modal-hd">
+    <div class="modal-ttl"><div class="site-ic" style="width:22px;height:22px;font-size:12px;border-radius:4px;flex-shrink:0"><i class="ti ${typeIcon(s.type)}"></i></div>${esc(s.domain)}</div>
+    <button class="btn btn-icon btn-sm" onclick="closeModal()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="modal-body">
+    <table class="tbl mb14">
+      <tr><td>Tipe</td><td><span class="badge ${typeBadge(s.type)}">${typeLabel(s.type)}</span></td></tr>
+      <tr><td>Status</td><td>${statusBadge(s.status)}</td></tr>
+      <tr><td>SSL</td><td>${sslBadge(s.ssl)}</td></tr>
+      <tr><td>FastCGI Cache</td><td>${s.cache?'<span class="badge b-warn"><i class="ti ti-bolt"></i>Aktif</span>':'<span class="badge b-neu">Off</span>'}</td></tr>
+      <tr><td>Redis</td><td>${s.redis?'<span class="badge b-info">Aktif</span>':'<span class="badge b-neu">Off</span>'}</td></tr>
+      ${s.php?`<tr><td>PHP</td><td class="mono">PHP ${s.php}</td></tr>`:''}
+      ${s.db?`<tr><td>Database</td><td class="mono">${esc(s.db)}</td></tr>`:''}
+      <tr><td>Ukuran</td><td class="mono">${s.size}</td></tr>
+      <tr><td>Web Root</td><td class="mono f11">/var/www/${esc(s.domain)}/htdocs</td></tr>
+    </table>
+    <div class="cmd-box">
+      <div class="cmd-label">Commands</div>
+      <div class="cmd-line">sudo site ${esc(s.domain)} -info</div>
+      <div class="cmd-line">sudo site ${esc(s.domain)} -ssl=${s.ssl?'renew':'on'}</div>
+      <div class="cmd-line">sudo webinoly -clear-cache=${esc(s.domain)}</div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-danger btn-sm" onclick="closeModal();confirmDel('${esc(s.domain)}')"><i class="ti ti-trash"></i>Hapus</button>
+    <button class="btn btn-sm" onclick="clearCache('${esc(s.domain)}');closeModal()"><i class="ti ti-bolt"></i>Clear Cache</button>
+    <button class="btn btn-primary btn-sm" onclick="toggleStatus('${esc(s.domain)}');closeModal()">${s.status==='on'?'Disable':'Enable'}</button>
+  </div>`);
+}
+
+async function toggleStatus(domain){
+  const s=DB.sites.find(x=>x.domain===domain); if(!s) return;
+  const newState = s.status==='on'?'off':'on';
+  const result = await apiFetch('site_toggle',{domain, state:newState});
+  if(result.success !== false){
+    s.status = newState;
+    toast('Site '+domain+' '+( newState==='on'?'diaktifkan':'dinonaktifkan')+' ✓','ok');
+    if(['sites','dashboard'].includes(curPage)) go(curPage);
+  } else {
+    toast(result.error||'Gagal ubah status site','err',4000);
+  }
+}
+
+function confirmDel(domain){
+  openModal(`
+  <div class="modal-hd"><div class="modal-ttl" style="color:var(--err)"><i class="ti ti-trash"></i>Hapus Site</div><button class="btn btn-icon btn-sm" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <p class="f13 mb12">Yakin hapus <strong class="mono">${esc(domain)}</strong>?</p>
+    <div class="notice n-err"><i class="ti ti-alert-triangle"></i>Site, file, dan database akan dihapus permanen. Tidak bisa dibatalkan.</div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn" onclick="closeModal()">Batal</button>
+    <button class="btn btn-danger" onclick="doDel('${esc(domain)}')"><i class="ti ti-trash"></i>Ya, Hapus</button>
+  </div>`);
+}
+async function doDel(domain){
+  closeModal();
+  const result = await apiFetch('site_delete',{domain});
+  if(result.success !== false){
+    const i=DB.sites.findIndex(s=>s.domain===domain);
+    if(i>-1){ DB.sites.splice(i,1); delete DB.cacheState[domain]; }
+    document.getElementById('nb-sites').textContent=DB.sites.length;
+    document.getElementById('nb-cache').textContent=DB.sites.filter(s=>s.cache).length;
+    toast('Site '+domain+' dihapus ✓','ok');
+    if(result.output) showOutputModal('site_delete: '+domain, result.output,'ok');
+    go('sites');
+  } else {
+    toast(result.error||'Gagal hapus site','err',5000);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════
+   HALAMAN BARU: REDIRECT MANAGER
+═══════════════════════════════════════════════ */
+const REDIRECTS = [
+  { from:'http://example.com', to:'https://example.com', type:'301', site:'example.com', active:true },
+  { from:'https://www.example.com', to:'https://example.com', type:'301', site:'example.com', active:true },
+  { from:'https://example.com/old-page', to:'https://example.com/new-page', type:'302', site:'example.com', active:true },
+  { from:'https://old-domain.com', to:'https://example.com', type:'301', site:'example.com', active:false },
+];
+
+P.redirect = ()=>`
+<div class="notice n-info mb14"><i class="ti ti-info-circle"></i>Redirect dikelola via Nginx config. Pastikan domain sudah ada di Sites Manager sebelum membuat redirect.</div>
+<div class="card mb14">
+  <div class="card-hd"><div class="card-title"><i class="ti ti-plus"></i>Tambah Redirect Baru</div></div>
+  <div class="g2">
+    <div class="fg">
+      <label class="flabel">URL Asal (From)</label>
+      <input class="finput" placeholder="https://example.com/halaman-lama" id="r-from">
+    </div>
+    <div class="fg">
+      <label class="flabel">URL Tujuan (To)</label>
+      <input class="finput" placeholder="https://example.com/halaman-baru" id="r-to">
+    </div>
+  </div>
+  <div class="g2">
+    <div class="fg">
+      <label class="flabel">Tipe Redirect</label>
+      <select class="fselect" id="r-type">
+        <option value="301">301 — Permanent (SEO friendly)</option>
+        <option value="302">302 — Temporary</option>
+        <option value="307">307 — Temporary (method preserved)</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="flabel">Site</label>
+      <select class="fselect" id="r-site">${DB.sites.map(s=>`<option value="${esc(s.domain)}">${esc(s.domain)}</option>`).join('')}</select>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="addRedirect()"><i class="ti ti-plus"></i>Tambah Redirect</button>
+</div>
+
+<div class="card">
+  <div class="card-hd">
+    <div class="card-title"><i class="ti ti-list"></i>Daftar Redirect <span class="badge b-neu">${REDIRECTS.length}</span></div>
+  </div>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="border-bottom:2px solid var(--border)">
+        <th style="text-align:left;padding:8px 0;color:var(--text-3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.07em">Dari</th>
+        <th style="text-align:left;padding:8px 10px;color:var(--text-3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.07em">Ke</th>
+        <th style="text-align:center;padding:8px 0;color:var(--text-3);font-weight:600;font-size:11px;width:60px">Tipe</th>
+        <th style="text-align:center;padding:8px 0;color:var(--text-3);font-weight:600;font-size:11px;width:70px">Status</th>
+        <th style="width:80px"></th>
+      </tr></thead>
+      <tbody>${REDIRECTS.map((r,i)=>`
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:10px 0;max-width:220px"><div class="mono f11" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2)">${esc(r.from)}</div></td>
+        <td style="padding:10px;max-width:220px"><div class="mono f11" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent)">${esc(r.to)}</div></td>
+        <td style="text-align:center;padding:10px 0"><span class="badge b-info">${r.type}</span></td>
+        <td style="text-align:center;padding:10px 0"><span class="badge ${r.active?'b-ok':'b-neu'}">${r.active?'Aktif':'Off'}</span></td>
+        <td style="padding:10px 0">
+          <div class="fx gap4 fxe">
+            <button class="btn btn-icon btn-sm" onclick="toggleRedirect(${i})" title="${r.active?'Disable':'Enable'}"><i class="ti ti-power"></i></button>
+            <button class="btn btn-icon btn-sm del" onclick="delRedirect(${i})" title="Hapus"><i class="ti ti-trash"></i></button>
+          </div>
+        </td>
+      </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+
+async function addRedirect(){
+  const from=(document.getElementById('r-from')||{}).value.trim();
+  const to=(document.getElementById('r-to')||{}).value.trim();
+  const type=(document.getElementById('r-type')||{}).value;
+  const site=(document.getElementById('r-site')||{}).value;
+  if(!from||!to){toast('Isi URL asal dan tujuan!','err');return;}
+  const result = await runCmd(`sudo site ${site} -redirection`, 'Redirect ditambahkan ✓');
+  REDIRECTS.unshift({from, to, type, site, active:true});
+  go('redirect');
+}
+function toggleRedirect(i){REDIRECTS[i].active=!REDIRECTS[i].active;runCmd('sudo systemctl reload nginx','Redirect diupdate ✓');setTimeout(()=>go('redirect'),400);}
+function delRedirect(i){REDIRECTS.splice(i,1);runCmd('sudo systemctl reload nginx','Redirect dihapus ✓');setTimeout(()=>go('redirect'),400);}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN BARU: WP MULTISITE
+═══════════════════════════════════════════════ */
+P.multisite = ()=>{
+  const wpSites = DB.sites.filter(s=>s.type==='wp');
+  return `
+<div class="notice n-warn mb14"><i class="ti ti-alert-triangle"></i>Konversi ke Multisite tidak bisa dibatalkan. Backup database dan file terlebih dahulu sebelum melanjutkan.</div>
+
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-layout-grid"></i>Konversi ke Multisite</div></div>
+    <div class="fg">
+      <label class="flabel">Pilih Site WordPress</label>
+      <select class="fselect" id="ms-site">${wpSites.map(s=>`<option value="${esc(s.domain)}">${esc(s.domain)}</option>`).join('')}</select>
+    </div>
+    <div class="fg">
+      <label class="flabel">Tipe Multisite</label>
+      <select class="fselect" id="ms-type">
+        <option value="subdomain">Subdomain (site1.example.com)</option>
+        <option value="subdirectory">Subdirectory (example.com/site1)</option>
+      </select>
+    </div>
+    <div class="notice n-info mb14"><i class="ti ti-info-circle"></i>Setelah konversi, tambahkan domain tambahan via "Parked Domain" di Sites Manager.</div>
+    <button class="btn btn-danger w100" onclick="confirmMultisite()"><i class="ti ti-layout-grid"></i>Konversi ke Multisite</button>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-info-circle"></i>Panduan Multisite</div></div>
+    <div style="font-size:12px;color:var(--text-2);line-height:1.8">
+      <div style="margin-bottom:10px"><strong style="color:var(--text)">1. Persiapan</strong><br>Pastikan WordPress sudah terinstall dan berjalan normal.</div>
+      <div style="margin-bottom:10px"><strong style="color:var(--text)">2. Konversi</strong><br>Klik tombol konversi — Webinoly akan update wp-config.php dan .htaccess otomatis.</div>
+      <div style="margin-bottom:10px"><strong style="color:var(--text)">3. Aktivasi Network</strong><br>Masuk WP Admin → Tools → Network Setup → ikuti instruksi.</div>
+      <div style="margin-bottom:10px"><strong style="color:var(--text)">4. Domain Mapping</strong><br>Tambahkan domain tambahan lewat Sites Manager sebagai Parked Domain.</div>
+      <div><strong style="color:var(--text)">5. SSL per Domain</strong><br>Aktifkan SSL untuk setiap domain yang di-map.</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-hd"><div class="card-title"><i class="ti ti-terminal"></i>Command Multisite</div></div>
+  <div class="cmd-box">
+    <div class="cmd-label">Contoh perintah Webinoly untuk Multisite</div>
+    <div class="cmd-line">sudo site example.com -multisite-convert</div>
+    <div class="cmd-line" style="color:#6b7280"># Tambah domain yang di-map:</div>
+    <div class="cmd-line">sudo site mapped-domain.com -parked=example.com</div>
+    <div class="cmd-line">sudo site mapped-domain.com -ssl=on -root=example.com</div>
+    <div class="cmd-line" style="color:#6b7280"># Hapus site dari network:</div>
+    <div class="cmd-line">sudo site sub.example.com -delete</div>
+  </div>
+</div>`;
+};
+
+function confirmMultisite(){
+  const site=(document.getElementById('ms-site')||{}).value;
+  openModal(`
+  <div class="modal-hd"><div class="modal-ttl" style="color:var(--warn)"><i class="ti ti-alert-triangle"></i>Konfirmasi Konversi Multisite</div><button class="btn btn-icon btn-sm" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <p class="f13 mb12">Konversi <strong class="mono">${esc(site)}</strong> ke WordPress Multisite?</p>
+    <div class="notice n-warn mb12"><i class="ti ti-alert-triangle"></i>Proses ini tidak bisa dibatalkan. Pastikan backup sudah ada!</div>
+    <div class="fg"><label class="flabel">Ketik nama domain untuk konfirmasi</label><input class="finput" id="ms-confirm" placeholder="${esc(site)}"></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn" onclick="closeModal()">Batal</button>
+    <button class="btn btn-danger" onclick="if(document.getElementById('ms-confirm').value==='${esc(site)}'){runCmd('sudo site ${esc(site)} -multisite-convert','Konversi Multisite selesai ✓');closeModal();}else{toast('Domain tidak cocok!','err')}"><i class="ti ti-layout-grid"></i>Konversi</button>
+  </div>`);
+}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN BARU: CRON JOBS
+═══════════════════════════════════════════════ */
+const CRONS = [
+  { schedule:'0 0 * * *',    cmd:'sudo webinoly -backup',           desc:'Backup harian',          user:'root',  active:true },
+  { schedule:'0 2 * * 0',    cmd:'sudo certbot renew',              desc:'Renew SSL mingguan',     user:'root',  active:true },
+  { schedule:'*/5 * * * *',  cmd:'php /var/www/example.com/wp-cron.php', desc:'WP Cron example.com',   user:'www-data', active:true },
+  { schedule:'0 6 * * *',    cmd:'sudo webinoly -clear-cache',      desc:'Clear cache harian',     user:'root',  active:false },
+];
+
+P.cron = ()=>`
+<div class="card mb14">
+  <div class="card-hd"><div class="card-title"><i class="ti ti-plus"></i>Tambah Cron Job</div></div>
+  <div class="g2">
+    <div class="fg">
+      <label class="flabel">Schedule (Cron Expression)</label>
+      <input class="finput mono" placeholder="* * * * *" id="cron-sched">
+      <div class="fx gap6 mt8" style="margin-top:6px;flex-wrap:wrap">
+        ${[['0 0 * * *','Harian'],['0 * * * *','Per jam'],['*/5 * * * *','5 menit'],['0 0 * * 0','Mingguan']].map(([v,l])=>
+          `<button class="btn btn-sm" onclick="document.getElementById('cron-sched').value='${v}'">${l}</button>`
+        ).join('')}
+      </div>
+    </div>
+    <div>
+      <div class="fg"><label class="flabel">Command</label><input class="finput mono" placeholder="sudo webinoly -backup" id="cron-cmd"></div>
+      <div class="fg"><label class="flabel">Deskripsi</label><input class="finput" placeholder="Backup harian otomatis" id="cron-desc"></div>
+      <div class="fg"><label class="flabel">User</label>
+        <select class="fselect" id="cron-user"><option value="root">root</option><option value="www-data">www-data</option></select>
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="addCron()"><i class="ti ti-plus"></i>Tambah Cron Job</button>
+</div>
+
+<div class="card">
+  <div class="card-hd"><div class="card-title"><i class="ti ti-clock"></i>Cron Jobs Aktif <span class="badge b-neu">${CRONS.length}</span></div></div>
+  ${CRONS.map((c,i)=>`
+  <div class="fx fxc" style="padding:11px 0;border-bottom:1px solid var(--border);gap:10px">
+    <div style="width:130px;flex-shrink:0">
+      <div class="mono f11 f600" style="color:var(--accent)">${esc(c.schedule)}</div>
+      <div class="f11 t3 mt8" style="margin-top:2px">user: ${c.user}</div>
+    </div>
+    <div class="flex1">
+      <div class="mono f11" style="color:var(--text-2);margin-bottom:2px">${esc(c.cmd)}</div>
+      <div class="f11 t3">${esc(c.desc)}</div>
+    </div>
+    <span class="badge ${c.active?'b-ok':'b-neu'}">${c.active?'Aktif':'Off'}</span>
+    <div class="fx gap4">
+      <button class="btn btn-icon btn-sm" onclick="CRONS[${i}].active=!CRONS[${i}].active;go('cron')" title="Toggle"><i class="ti ti-power"></i></button>
+      <button class="btn btn-icon btn-sm" onclick="runCmd('crontab -l | grep -n .','Running now ✓')" title="Run Now"><i class="ti ti-player-play"></i></button>
+      <button class="btn btn-icon btn-sm del" onclick="CRONS.splice(${i},1);go('cron')" title="Hapus"><i class="ti ti-trash"></i></button>
+    </div>
+  </div>`).join('')}
+</div>`;
+
+function addCron(){
+  const s=(document.getElementById('cron-sched')||{}).value.trim();
+  const c=(document.getElementById('cron-cmd')||{}).value.trim();
+  const d=(document.getElementById('cron-desc')||{}).value.trim();
+  const u=(document.getElementById('cron-user')||{}).value;
+  if(!s||!c){toast('Isi schedule dan command!','err');return;}
+  CRONS.unshift({schedule:s,cmd:c,desc:d||c,user:u,active:true});
+  toast('Cron job ditambahkan ✓','ok');
+  setTimeout(()=>go('cron'),400);
+}
+
+/* ═══════════════════════════════════════════════
+   HALAMAN BARU: PHP INFO
+═══════════════════════════════════════════════ */
+P.phpinfo = ()=>`
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-brand-php"></i>PHP Versions Terinstall</div></div>
+    ${[
+      {v:'8.3',status:'active',sites:3,fpm:'running'},
+      {v:'8.2',status:'installed',sites:1,fpm:'running'},
+      {v:'8.1',status:'installed',sites:0,fpm:'stopped'},
+      {v:'7.4',status:'installed',sites:0,fpm:'stopped'},
+    ].map(p=>`
+    <div class="fx fxc" style="padding:10px 0;border-bottom:1px solid var(--border);gap:10px">
+      <div class="site-ic" style="width:30px;height:30px;font-size:12px"><i class="ti ti-brand-php"></i></div>
+      <div class="flex1">
+        <div class="f13 f500 mono">PHP ${p.v}</div>
+        <div class="f11 t3 mt8" style="margin-top:2px">${p.sites} site · FPM: ${p.fpm}</div>
+      </div>
+      <span class="badge ${p.status==='active'?'b-ok':'b-neu'}">${p.status==='active'?'Default':'Installed'}</span>
+      <div class="fx gap4">
+        ${p.fpm==='running'
+          ?`<button class="btn btn-sm btn-danger" onclick="runCmd('sudo systemctl stop php${p.v}-fpm','PHP ${p.v}-FPM stopped')">Stop</button>`
+          :`<button class="btn btn-sm btn-success" onclick="runCmd('sudo systemctl start php${p.v}-fpm','PHP ${p.v}-FPM started ✓')">Start</button>`
+        }
+        <button class="btn btn-sm" onclick="runCmd('sudo stack -php-ver=${p.v}','PHP ${p.v} set as default ✓')">Set Default</button>
+      </div>
+    </div>`).join('')}
+    <div class="fx gap8 mt12" style="margin-top:10px">
+      <select class="fselect flex1" id="php-inst"><option>8.3</option><option>8.2</option><option>8.1</option><option>7.4</option></select>
+      <button class="btn btn-primary btn-sm" onclick="runCmd('sudo stack -php-ver='+document.getElementById('php-inst').value,'PHP terinstall ✓')"><i class="ti ti-download"></i>Install</button>
+      <button class="btn btn-danger btn-sm" onclick="runCmd('sudo stack -php='+document.getElementById('php-inst').value+' -purge','PHP dihapus')"><i class="ti ti-trash"></i>Remove</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-settings"></i>PHP Configuration (php.ini)</div></div>
+    ${[
+      ['memory_limit','256M'],
+      ['max_execution_time','300'],
+      ['max_input_time','300'],
+      ['upload_max_filesize','64M'],
+      ['post_max_size','64M'],
+      ['max_input_vars','5000'],
+      ['date.timezone','Asia/Jakarta'],
+    ].map(([k,v])=>`
+    <div class="fx fxc" style="padding:7px 0;border-bottom:1px solid var(--border);gap:10px">
+      <div class="flex1 mono f11 t2">${k}</div>
+      <input class="finput" style="width:120px;text-align:right" value="${v}">
+    </div>`).join('')}
+    <button class="btn btn-primary w100 mt12" style="margin-top:10px" onclick="runCmd('sudo systemctl reload php8.3-fpm','PHP config disimpan & reloaded ✓')"><i class="ti ti-device-floppy"></i>Simpan & Reload PHP-FPM</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-hd"><div class="card-title"><i class="ti ti-puzzle"></i>PHP Extensions</div></div>
+  <div class="g3">
+    ${['curl','gd','intl','mbstring','mysql','opcache','redis','soap','xml','zip','imagick','bcmath'].map(ext=>`
+    <div class="fx fxc" style="padding:7px 0;border-bottom:1px solid var(--border);gap:8px">
+      <div class="flex1 mono f12">${ext}</div>
+      <span class="badge b-ok"><i class="ti ti-check"></i>Loaded</span>
+    </div>`).join('')}
+  </div>
+</div>`;
+
+/* ═══════════════════════════════════════════════
+   HALAMAN BARU: FIREWALL
+═══════════════════════════════════════════════ */
+const FW_RULES = [
+  { port:'22',   proto:'TCP', dir:'IN',  action:'ALLOW', from:'Anywhere', desc:'SSH' },
+  { port:'80',   proto:'TCP', dir:'IN',  action:'ALLOW', from:'Anywhere', desc:'HTTP' },
+  { port:'443',  proto:'TCP', dir:'IN',  action:'ALLOW', from:'Anywhere', desc:'HTTPS' },
+  { port:'443',  proto:'UDP', dir:'IN',  action:'ALLOW', from:'Anywhere', desc:'HTTP/3 (QUIC)' },
+  { port:'22222',proto:'TCP', dir:'IN',  action:'ALLOW', from:'Anywhere', desc:'Admin Tools' },
+  { port:'3306', proto:'TCP', dir:'IN',  action:'DENY',  from:'Anywhere', desc:'MySQL (Remote blocked)' },
+  { port:'6379', proto:'TCP', dir:'IN',  action:'DENY',  from:'Anywhere', desc:'Redis (Remote blocked)' },
+  { port:'25',   proto:'TCP', dir:'OUT', action:'ALLOW', from:'Anywhere', desc:'SMTP Outbound' },
+];
+
+P.firewall = ()=>`
+<div class="notice n-info mb14"><i class="ti ti-info-circle"></i>Panel ini menampilkan rekomendasi port untuk Webinoly. Konfigurasi firewall aktual dilakukan di UFW server atau Security Group cloud provider (AWS/DO/GCP).</div>
+
+<div class="g2 mb14">
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-shield-lock"></i>Port Rules Webinoly</div></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="border-bottom:2px solid var(--border)">
+        ${['Port','Proto','Arah','Action','Keterangan'].map(h=>`<th style="text-align:left;padding:7px 6px;color:var(--text-3);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em">${h}</th>`).join('')}
+      </tr></thead>
+      <tbody>${FW_RULES.map(r=>`
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 6px" class="mono f600">${r.port}</td>
+        <td style="padding:8px 6px"><span class="badge b-neu">${r.proto}</span></td>
+        <td style="padding:8px 6px"><span class="badge b-info">${r.dir}</span></td>
+        <td style="padding:8px 6px"><span class="badge ${r.action==='ALLOW'?'b-ok':'b-err'}">${r.action}</span></td>
+        <td style="padding:8px 6px;color:var(--text-2)">${r.desc}</td>
+      </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><div class="card-title"><i class="ti ti-terminal"></i>UFW Commands</div></div>
+    <div class="cmd-box mb14">
+      <div class="cmd-label">Setup UFW untuk Webinoly</div>
+      <div class="cmd-line">sudo ufw allow 22/tcp</div>
+      <div class="cmd-line">sudo ufw allow 80/tcp</div>
+      <div class="cmd-line">sudo ufw allow 443/tcp</div>
+      <div class="cmd-line">sudo ufw allow 443/udp</div>
+      <div class="cmd-line">sudo ufw allow 22222/tcp</div>
+      <div class="cmd-line">sudo ufw deny 3306/tcp</div>
+      <div class="cmd-line">sudo ufw deny 6379/tcp</div>
+      <div class="cmd-line">sudo ufw enable</div>
+      <div class="cmd-line">sudo ufw status verbose</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn w100" onclick="runCmd('sudo ufw status verbose','Status UFW ditampilkan')"><i class="ti ti-list"></i>Cek Status UFW</button>
+      <button class="btn btn-success w100" onclick="runCmd('sudo ufw enable','UFW diaktifkan ✓')"><i class="ti ti-shield-check"></i>Aktifkan UFW</button>
+      <button class="btn btn-danger w100" onclick="runCmd('sudo ufw disable','UFW dinonaktifkan')"><i class="ti ti-shield-off"></i>Nonaktifkan UFW</button>
+    </div>
+  </div>
+</div>`;
+
+
+/* ═══════════════════════════════════════════════
+   DARK MODE
+═══════════════════════════════════════════════ */
+let isDark = false;
+function toggleTheme(){
+  isDark = !isDark;
+  document.body.classList.toggle('dark', isDark);
+  const icon = document.getElementById('theme-icon');
+  if(icon) icon.className = isDark ? 'ti ti-sun' : 'ti ti-moon';
+  localStorage.setItem('aidi-theme', isDark ? 'dark' : 'light');
+  toast(isDark ? 'Mode gelap aktif' : 'Mode terang aktif', 'info', 1500);
+}
+// Load saved theme
+(function(){
+  const saved = localStorage.getItem('aidi-theme');
+  if(saved === 'dark'){
+    isDark = true;
+    document.body.classList.add('dark');
+    const icon = document.getElementById('theme-icon');
+    if(icon) icon.className = 'ti ti-sun';
+  }
+})();
+
+/* ═══════════════════════════════════════════════
+   NOTIFICATIONS
+═══════════════════════════════════════════════ */
+const NOTIFS = [
+  { id:1, type:'err',  read:false, time:'10:47:15', msg:'PHP Fatal error — shop.example.com' },
+  { id:2, type:'warn', read:false, time:'10:42:03', msg:'SSL staging.dev akan expire dalam 7 hari' },
+  { id:3, type:'ok',   read:true,  time:'09:30:00', msg:'Backup harian berhasil — 4.2 GB' },
+  { id:4, type:'info', read:true,  time:'08:15:22', msg:'Webinoly update tersedia: v1.18.5' },
+];
+
+function renderNotifList(){
+  const list = document.getElementById('notif-list');
+  if(!list) return;
+  const icons = {ok:'ti-circle-check',err:'ti-circle-x',warn:'ti-alert-triangle',info:'ti-info-circle'};
+  const cols  = {ok:'var(--ok)',err:'var(--err)',warn:'var(--warn)',info:'var(--accent)'};
+  list.innerHTML = NOTIFS.map(n => `
+  <div style="padding:11px 14px;border-bottom:1px solid var(--border);display:flex;gap:9px;align-items:flex-start;background:${n.read?'transparent':'var(--bg-subtle)'}">
+    <i class="ti ${icons[n.type]}" style="color:${cols[n.type]};font-size:15px;flex-shrink:0;margin-top:1px"></i>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;line-height:1.4;color:var(--text)">${n.msg}</div>
+      <div style="font-size:10px;color:var(--text-3);margin-top:2px;font-family:var(--mono)">${n.time}</div>
+    </div>
+    ${!n.read?`<span style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:4px"></span>`:''}
+  </div>`).join('') || '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text-3)">Tidak ada notifikasi</div>';
+}
+
+let notifOpen = false;
+function toggleNotif(){
+  notifOpen = !notifOpen;
+  const panel = document.getElementById('notif-panel');
+  if(panel){
+    panel.style.display = notifOpen ? 'block' : 'none';
+    if(notifOpen) renderNotifList();
+  }
+}
+function closeNotif(){
+  notifOpen = false;
+  const panel = document.getElementById('notif-panel');
+  if(panel) panel.style.display = 'none';
+}
+function clearNotif(){
+  NOTIFS.forEach(n => n.read = true);
+  const dot = document.getElementById('bell-dot');
+  if(dot) dot.style.display = 'none';
+  renderNotifList();
+}
+
+// Close notif on outside click
+document.addEventListener('click', e => {
+  if(notifOpen && !e.target.closest('#notif-panel') && !e.target.closest('#bell-btn')){
+    closeNotif();
+  }
+});
+
+// Update bell dot
+function updateBellDot(){
+  const dot = document.getElementById('bell-dot');
+  const unread = NOTIFS.filter(n => !n.read).length;
+  if(dot) dot.style.display = unread > 0 ? 'block' : 'none';
+}
+updateBellDot();
+
+/* ═══════════════════════════════════════════════
+   GLOBAL SEARCH
+═══════════════════════════════════════════════ */
+function globalSearch(q){
+  if(!q || q.length < 2) return;
+  const lower = q.toLowerCase();
+  // Cari di site list
+  const match = DB.sites.find(s => s.domain.includes(lower));
+  if(match && q.length >= 3){
+    go('sites');
+    setTimeout(() => filterSites(lower), 100);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   SSL, SERVER INFO, SITE LIST REFRESH
+═══════════════════════════════════════════════ */
+
+async function sslAction(domain, state){
+  const labels = {on:'diaktifkan', off:'dinonaktifkan', renew:'di-renew'};
+  const result = await apiFetch('ssl_toggle', {domain, state});
+  if(result.success !== false){
+    const s = DB.sites.find(x => x.domain === domain);
+    if(s) s.ssl = (state !== 'off');
+    toast('SSL ' + domain + ' ' + (labels[state]||state) + ' ✓', 'ok');
+    if(result.output) showOutputModal('ssl ' + state + ': ' + domain, result.output, 'ok');
+    setTimeout(() => go('ssl'), 600);
+  } else {
+    const hint = state === 'on' ? ' — Pastikan DNS sudah mengarah ke server ini dan port 80 terbuka' : '';
+    toast((result.error || 'Gagal') + hint, 'err', 7000);
+    if(result.output) showOutputModal('ssl ' + state + ': ' + domain, result.output, 'err');
+  }
+}
+
+async function refreshServerInfo(){
+  const result = await apiFetch('server_info');
+  if(result.success !== false){
+    const valEl = document.getElementById('stat-server-val');
+    const subEl = document.getElementById('stat-server-sub');
+    if(valEl){ valEl.textContent = 'UP'; }
+    if(subEl && result.uptime){
+      const up = String(result.uptime).trim().replace('up ','');
+      subEl.innerHTML = '<i class="ti ti-server" style="color:var(--ok)"></i>' + up;
+    }
+    toast('Info server diperbarui', 'info', 1500);
+  }
+}
+
+async function refreshSiteList(){
+  if(API.demoMode) return;
+  const result = await apiFetch('site_list');
+  if(result.success && result.sites && result.sites.length){
+    DB.sites = result.sites;
+    DB.sites.forEach(s => DB.cacheState[s.domain] = s.cache);
+    document.getElementById('nb-sites').textContent = DB.sites.length;
+    document.getElementById('nb-cache').textContent = DB.sites.filter(s => s.cache).length;
+  }
+}
+
+/* ═══ INIT ═══════════════════════════════════════ */
+
+// Cek apakah sudah ada session aktif di server
+(async function init(){
+  updateDemoModeBadge();
+
+  // Cek status session (apakah sudah login sebelumnya)
+  try {
+    const statusRes = await apiFetch('status');
+    if(statusRes.authenticated && !API.demoMode){
+      // Ada session aktif - sync data dari server
+      await syncServerData();
+      toast('Terhubung ke server ✓','ok',2000);
+    }
+  } catch(e) {
+    // Tidak bisa reach server — tetap demo mode
+    console.info('Server tidak tersedia, demo mode aktif');
+  }
+
+  go('dashboard');
+})();
+
+// Update badge cache count setiap 3 detik
+setInterval(()=>{
+  const n=document.getElementById('nb-cache');
+  if(n) n.textContent=DB.sites.filter(s=>s.cache).length;
+  updateDemoModeBadge();
+},3000);
+
+// Auto-logout jika session habis (cek tiap 5 menit)
+setInterval(async ()=>{
+  if(API.demoMode) return;
+  try {
+    const s = await apiFetch('status');
+    if(!s.authenticated){
+      API.csrfToken = null;
+      API.demoMode = true;
+      toast('Sesi habis — kembali ke demo mode','warn');
+      updateDemoModeBadge();
+    }
+  } catch(e) {}
+}, 5 * 60 * 1000);
+</script>
+</body>
+</html>

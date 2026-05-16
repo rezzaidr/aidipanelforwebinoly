@@ -1,4 +1,27 @@
-## Mengapa AIDI Panel for Webinoly?
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/rezzaidr/aidipanelforwebinoly/main/docs/logo.png" alt="AIDI Panel" width="80">
+
+# AIDI Panel
+
+**Server Manager Panel — Built for Webinoly Stack**
+
+[![Version](https://img.shields.io/badge/version-1.1.0-blue?style=flat-square)](https://github.com/rezzaidr/aidipanelforwebinoly/releases)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04-orange?style=flat-square&logo=ubuntu)](https://ubuntu.com)
+[![PHP](https://img.shields.io/badge/PHP-8.0+-purple?style=flat-square&logo=php)](https://php.net)
+[![Webinoly](https://img.shields.io/badge/Webinoly-required-red?style=flat-square)](https://webinoly.com)
+
+Panel manajemen server berbasis web yang dibangun di atas **Webinoly** (LEMP stack).  
+Kelola Nginx, PHP, MariaDB, Redis, SSL, dan WordPress — semuanya dari satu antarmuka.
+
+[Demo](#demo) · [Instalasi](#instalasi-cepat) · [Fitur](#fitur) · [Screenshot](#screenshot) · [Kontribusi](#kontribusi)
+
+</div>
+
+---
+
+## Mengapa AIDI Panel?
 
 Webinoly adalah tool server yang sangat powerful, tapi semuanya via command line. AIDI Panel memberikan antarmuka visual di atasnya — tanpa menggantikan Webinoly, tanpa menginstall stack baru.
 
